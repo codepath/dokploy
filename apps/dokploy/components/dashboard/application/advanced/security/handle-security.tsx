@@ -25,6 +25,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import { ToggleVisibilityInput } from "../../../../shared/toggle-visibility-input";
 
 const AddSecuritychema = z.object({
 	username: z.string().min(1, "Username is required"),
@@ -151,7 +152,7 @@ export const HandleSecurity = ({
 									<FormItem>
 										<FormLabel>Password</FormLabel>
 										<FormControl>
-											<Input placeholder="test" {...field} />
+											<ToggleVisibilityInput placeholder="password" {...field} />
 										</FormControl>
 
 										<FormMessage />

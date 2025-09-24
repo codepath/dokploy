@@ -23,15 +23,18 @@ import { type ReactElement, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+export const MIN_PASSWORD_LENGTH = 8;
+const MINIMUM_REQUIRED_LENGTH = 1;
+const TIMEOUT_DURATION = 2000;
 
 const registerSchema = z
 	.object({
-		name: z.string().min(1, {
+		name: z.string().min(MINIMUM_REQUIRED_LENGTH , {
 			message: "Name is required",
 		}),
 		email: z
 			.string()
-			.min(1, {
+			.min(MINIMUM_REQUIRED_LENGTH, {
 				message: "Email is required",
 			})
 			.email({
@@ -39,20 +42,20 @@ const registerSchema = z
 			}),
 		password: z
 			.string()
-			.min(1, {
+			.min(MINIMUM_REQUIRED_LENGTH, {
 				message: "Password is required",
 			})
-			.refine((password) => password === "" || password.length >= 8, {
+			.refine((password) => password === "" || password.length >= MIN_PASSWORD_LENGTH, {
 				message: "Password must be at least 8 characters",
 			}),
 		confirmPassword: z
 			.string()
-			.min(1, {
+			.min(MINIMUM_REQUIRED_LENGTH, {
 				message: "Password is required",
 			})
 			.refine(
 				(confirmPassword) =>
-					confirmPassword === "" || confirmPassword.length >= 8,
+					confirmPassword === "" || confirmPassword.length >= MIN_PASSWORD_LENGTH,
 				{
 					message: "Password must be at least 8 characters",
 				},
@@ -102,7 +105,7 @@ const Register = ({ isCloud }: Props) => {
 			setError(error.message || "An error occurred");
 		} else {
 			toast.success("User registered successfuly", {
-				duration: 2000,
+				duration: TIMEOUT_DURATION,
 			});
 			if (!isCloud) {
 				router.push("/");
