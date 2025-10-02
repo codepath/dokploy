@@ -11,10 +11,11 @@ import { api } from "@/utils/api";
 import { LockKeyhole, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { HandleSecurity } from "./handle-security";
-
+import { PASSWORD_RANGE } from "../../../../../pages/register";
 interface Props {
 	applicationId: string;
 }
+
 
 export const ShowSecurity = ({ applicationId }: Props) => {
 	const { data, refetch } = api.application.one.useQuery(
@@ -69,7 +70,9 @@ export const ShowSecurity = ({ applicationId }: Props) => {
 											<div className="flex flex-col gap-1">
 												<span className="font-medium">Password</span>
 												<span className="text-sm text-muted-foreground">
-													{security.password}
+													{security.password
+														? "*".repeat(PASSWORD_RANGE)
+														: ""}
 												</span>
 											</div>
 										</div>
