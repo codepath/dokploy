@@ -23,7 +23,7 @@ import { type ReactElement, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
-export const PASSWORD_RANGE = 8;
+export const MIN_PASSWORD_LENGTH = 8;
 const MINIMUM_REQUIRED_LENGTH = 1;
 const TIMEOUT_DURATION = 2000;
 
@@ -45,7 +45,7 @@ const registerSchema = z
 			.min(MINIMUM_REQUIRED_LENGTH, {
 				message: "Password is required",
 			})
-			.refine((password) => password === "" || password.length >= PASSWORD_RANGE, {
+			.refine((password) => password === "" || password.length >= MIN_PASSWORD_LENGTH, {
 				message: "Password must be at least 8 characters",
 			}),
 		confirmPassword: z
@@ -55,7 +55,7 @@ const registerSchema = z
 			})
 			.refine(
 				(confirmPassword) =>
-					confirmPassword === "" || confirmPassword.length >= PASSWORD_RANGE,
+					confirmPassword === "" || confirmPassword.length >= MIN_PASSWORD_LENGTH,
 				{
 					message: "Password must be at least 8 characters",
 				},
