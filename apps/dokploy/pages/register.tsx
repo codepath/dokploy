@@ -24,17 +24,17 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 export const PASSWORD_RANGE = 8;
-const MINIMUN_REQUIRED_LENGTH = 1;
+const MINIMUM_REQUIRED_LENGTH = 1;
 const TIMEOUT_DURATION = 2000;
 
 const registerSchema = z
 	.object({
-		name: z.string().min(MINIMUN_REQUIRED_LENGTH , {
+		name: z.string().min(MINIMUM_REQUIRED_LENGTH , {
 			message: "Name is required",
 		}),
 		email: z
 			.string()
-			.min(MINIMUN_REQUIRED_LENGTH, {
+			.min(MINIMUM_REQUIRED_LENGTH, {
 				message: "Email is required",
 			})
 			.email({
@@ -42,7 +42,7 @@ const registerSchema = z
 			}),
 		password: z
 			.string()
-			.min(MINIMUN_REQUIRED_LENGTH, {
+			.min(MINIMUM_REQUIRED_LENGTH, {
 				message: "Password is required",
 			})
 			.refine((password) => password === "" || password.length >= PASSWORD_RANGE, {
@@ -50,7 +50,7 @@ const registerSchema = z
 			}),
 		confirmPassword: z
 			.string()
-			.min(MINIMUN_REQUIRED_LENGTH, {
+			.min(MINIMUM_REQUIRED_LENGTH, {
 				message: "Password is required",
 			})
 			.refine(
