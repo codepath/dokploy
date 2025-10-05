@@ -152,7 +152,7 @@ export const HandleSecurity = ({
 									<FormItem>
 										<FormLabel>Password</FormLabel>
 										<FormControl>
-											<ToggleVisibilityInput placeholder="test-chris" {...field} />
+											<ToggleVisibilityInput placeholder="password" {...field} />
 										</FormControl>
 
 										<FormMessage />
