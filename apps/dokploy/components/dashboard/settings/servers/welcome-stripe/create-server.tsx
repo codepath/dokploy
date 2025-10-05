@@ -212,7 +212,13 @@ export const CreateServer = ({ stepper }: Props) => {
 									<FormItem>
 										<FormLabel>IP Address</FormLabel>
 										<FormControl>
-											<Input placeholder="192.168.1.100" {...field} />
+											<Input 
+											    placeholder="192.168.1.100" 
+											    {...field} 
+											    onChange={(e) => {
+											    	field.onChange(e.target.value.trim());
+											    }}
+											/>
 										</FormControl>
 
 										<FormMessage />
