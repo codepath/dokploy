@@ -52,8 +52,15 @@ export const serverRouter = createTRPCRouter({
 						message: "You cannot create more servers",
 					});
 				}
+			
+				const sanitizedInput = {
+					...input,
+					ipAddress: input.ipAddress.trim(),
+					
+				};
+				console.log(sanitizedInput);
 				const project = await createServer(
-					input,
+					sanitizedInput,
 					ctx.session.activeOrganizationId,
 				);
 				return project;
@@ -367,8 +374,13 @@ export const serverRouter = createTRPCRouter({
 						message: "Server is inactive",
 					});
 				}
-				const currentServer = await updateServerById(input.serverId, {
+				const sanitizedInput = {
 					...input,
+					ipAddress: input.ipAddress.trim()
+					
+				};
+				const currentServer = await updateServerById(input.serverId, {
+					...sanitizedInput,
 				});
 
 				return currentServer;

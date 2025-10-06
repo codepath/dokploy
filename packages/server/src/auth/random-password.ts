@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 export const generateRandomPassword = async () => {
 	const passwordLength = 16;
