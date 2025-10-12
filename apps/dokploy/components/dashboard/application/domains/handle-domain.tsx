@@ -294,6 +294,7 @@ export const AddDomain = ({ id, type, domainId = "", children }: Props) => {
 													<FormItem className="w-full">
 														<FormLabel>Service Name</FormLabel>
 														<div className="flex gap-2">
+															{services && services.length >0 ? (
 															<Select
 																onValueChange={field.onChange}
 																defaultValue={field.value || ""}
@@ -313,11 +314,16 @@ export const AddDomain = ({ id, type, domainId = "", children }: Props) => {
 																			{service}
 																		</SelectItem>
 																	))}
-																	<SelectItem value="none" disabled>
-																		Empty
-																	</SelectItem>
-																</SelectContent>
-															</Select>
+																	</SelectContent>
+																</Select>
+															) : (
+																<FormControl>
+																<Input 
+																	{...field}
+																	placeholder="Enter service name manually"
+																/>
+																</FormControl>
+															)}
 															<TooltipProvider delayDuration={0}>
 																<Tooltip>
 																	<TooltipTrigger asChild>

@@ -71,6 +71,13 @@ export const cloneComposeRemote = async (compose: Compose) => {
 	}
 };
 
+const parseComposePath = (composePath:string):string => {
+	if (composePath.startsWith("-f ")) {
+		return composePath.substring(3).trim();
+	}
+	return composePath;
+}
+
 export const getComposePath = (compose: Compose) => {
 	const { COMPOSE_PATH } = paths(!!compose.serverId);
 	const { appName, sourceType, composePath } = compose;
@@ -79,7 +86,7 @@ export const getComposePath = (compose: Compose) => {
 	if (sourceType === "raw") {
 		path = "docker-compose.yml";
 	} else {
-		path = composePath;
+		path = parseComposePath(composePath);
 	}
 
 	return join(COMPOSE_PATH, appName, "code", path);
