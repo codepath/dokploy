@@ -11,7 +11,7 @@ import { api } from "@/utils/api";
 import { LockKeyhole, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { HandleSecurity } from "./handle-security";
-import { PASSWORD_RANGE } from "../../../../../pages/register";
+import { MIN_PASSWORD_LENGTH } from "@/pages/register";
 interface Props {
 	applicationId: string;
 }
@@ -71,7 +71,7 @@ export const ShowSecurity = ({ applicationId }: Props) => {
 												<span className="font-medium">Password</span>
 												<span className="text-sm text-muted-foreground">
 													{security.password
-														? "*".repeat(PASSWORD_RANGE)
+														? "*".repeat(MIN_PASSWORD_LENGTH)
 														: ""}
 												</span>
 											</div>
