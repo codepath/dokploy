@@ -1,13 +1,3 @@
-import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
-import {
-	apiCreateGitlab,
-	apiFindGitlabBranches,
-	apiFindOneGitlab,
-	apiGitlabTestConnection,
-	apiUpdateGitlab,
-} from "@/server/db/schema";
-
-import { db } from "@/server/db";
 import {
 	createGitlab,
 	findGitlabById,
@@ -15,10 +5,19 @@ import {
 	getGitlabRepositories,
 	haveGitlabRequirements,
 	testGitlabConnection,
-	updateGitProvider,
 	updateGitlab,
+	updateGitProvider,
 } from "@dokploy/server";
 import { TRPCError } from "@trpc/server";
+import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
+import { db } from "@/server/db";
+import {
+	apiCreateGitlab,
+	apiFindGitlabBranches,
+	apiFindOneGitlab,
+	apiGitlabTestConnection,
+	apiUpdateGitlab,
+} from "@/server/db/schema";
 
 export const gitlabRouter = createTRPCRouter({
 	create: protectedProcedure
@@ -76,6 +75,7 @@ export const gitlabRouter = createTRPCRouter({
 					gitProvider: {
 						...provider.gitProvider,
 					},
+					gitlabUrl: provider.gitlabUrl,
 				};
 			});
 

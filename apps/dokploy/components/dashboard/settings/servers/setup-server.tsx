@@ -1,3 +1,8 @@
+import copy from "copy-to-clipboard";
+import { CopyIcon, ExternalLinkIcon, ServerIcon } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { toast } from "sonner";
 import { AlertBlock } from "@/components/shared/alert-block";
 import { CodeEditor } from "@/components/shared/code-editor";
 import { DialogAction } from "@/components/shared/dialog-action";
@@ -21,11 +26,6 @@ import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { api } from "@/utils/api";
-import copy from "copy-to-clipboard";
-import { CopyIcon, ExternalLinkIcon, ServerIcon } from "lucide-react";
-import Link from "next/link";
-import { useState } from "react";
-import { toast } from "sonner";
 import { ShowDeployment } from "../../application/deployments/show-deployment";
 import { type LogLine, parseLogs } from "../../docker/logs/utils";
 import { EditScript } from "./edit-script";
@@ -88,7 +88,7 @@ export const SetupServer = ({ serverId }: Props) => {
 					Setup Server
 				</DropdownMenuItem>
 			</DialogTrigger>
-			<DialogContent className="sm:max-w-4xl  overflow-y-auto max-h-screen ">
+			<DialogContent className="sm:max-w-4xl  ">
 				<DialogHeader>
 					<div className="flex flex-col gap-1.5">
 						<DialogTitle className="flex items-center gap-2">
@@ -152,7 +152,7 @@ export const SetupServer = ({ serverId }: Props) => {
 												Copy Public Key ({server?.sshKey?.name})
 												<button
 													type="button"
-													className=" right-2 top-8"
+													className="right-2 top-8"
 													onClick={() => {
 														copy(
 															server?.sshKey?.publicKey || "Generate a SSH Key",

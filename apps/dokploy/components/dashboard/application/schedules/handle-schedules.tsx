@@ -1,9 +1,22 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+	DatabaseZap,
+	Info,
+	PenBoxIcon,
+	PlusCircle,
+	RefreshCw,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { type Control, useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
 import { AlertBlock } from "@/components/shared/alert-block";
 import { CodeEditor } from "@/components/shared/code-editor";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
@@ -34,18 +47,6 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { api } from "@/utils/api";
-import { zodResolver } from "@hookform/resolvers/zod";
-import {
-	DatabaseZap,
-	Info,
-	PenBoxIcon,
-	PlusCircle,
-	RefreshCw,
-} from "lucide-react";
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { z } from "zod";
 import type { CacheType } from "../domains/handle-domain";
 
 export const commonCronExpressions = [
@@ -56,6 +57,7 @@ export const commonCronExpressions = [
 	{ label: "Every month on the 1st at midnight", value: "0 0 1 * *" },
 	{ label: "Every 15 minutes", value: "*/15 * * * *" },
 	{ label: "Every weekday at midnight", value: "0 0 * * 1-5" },
+	{ label: "Custom", value: "custom" },
 ];
 
 const formSchema = z
@@ -114,10 +116,91 @@ interface Props {
 	scheduleType?: "application" | "compose" | "server" | "dokploy-server";
 }
 
+export const ScheduleFormField = ({
+	name,
+	formControl,
+}: {
+	name: string;
+	formControl: Control<any>;
+}) => {
+	const [selectedOption, setSelectedOption] = useState("");
+
+	return (
+		<FormField
+			control={formControl}
+			name={name}
+			render={({ field }) => (
+				<FormItem>
+					<FormLabel className="flex items-center gap-2">
+						Schedule
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Info className="w-4 h-4 text-muted-foreground cursor-help" />
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>Cron expression format: minute hour day month weekday</p>
+									<p>Example: 0 0 * * * (daily at midnight)</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					</FormLabel>
+					<div className="flex flex-col gap-2">
+						<Select
+							value={selectedOption}
+							onValueChange={(value) => {
+								setSelectedOption(value);
+								field.onChange(value === "custom" ? "" : value);
+							}}
+						>
+							<FormControl>
+								<SelectTrigger>
+									<SelectValue placeholder="Select a predefined schedule" />
+								</SelectTrigger>
+							</FormControl>
+							<SelectContent>
+								{commonCronExpressions.map((expr) => (
+									<SelectItem key={expr.value} value={expr.value}>
+										{expr.label}
+										{expr.value !== "custom" && ` (${expr.value})`}
+									</SelectItem>
+								))}
+							</SelectContent>
+						</Select>
+						<div className="relative">
+							<FormControl>
+								<Input
+									placeholder="Custom cron expression (e.g., 0 0 * * *)"
+									{...field}
+									onChange={(e) => {
+										const value = e.target.value;
+										const commonExpression = commonCronExpressions.find(
+											(expression) => expression.value === value,
+										);
+										if (commonExpression) {
+											setSelectedOption(commonExpression.value);
+										} else {
+											setSelectedOption("custom");
+										}
+										field.onChange(e);
+									}}
+								/>
+							</FormControl>
+						</div>
+					</div>
+					<FormDescription>
+						Choose a predefined schedule or enter a custom cron expression
+					</FormDescription>
+					<FormMessage />
+				</FormItem>
+			)}
+		/>
+	);
+};
+
 export const HandleSchedules = ({ id, scheduleId, scheduleType }: Props) => {
 	const [isOpen, setIsOpen] = useState(false);
 	const [cacheType, setCacheType] = useState<CacheType>("cache");
-
 	const utils = api.useUtils();
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
@@ -232,14 +315,17 @@ export const HandleSchedules = ({ id, scheduleId, scheduleType }: Props) => {
 			</DialogTrigger>
 			<DialogContent
 				className={cn(
-					"max-h-screen overflow-y-auto",
 					scheduleTypeForm === "dokploy-server" || scheduleTypeForm === "server"
-						? "max-h-[95vh] sm:max-w-2xl"
-						: " sm:max-w-lg",
+						? "sm:max-w-2xl"
+						: "sm:max-w-lg",
 				)}
 			>
 				<DialogHeader>
 					<DialogTitle>{scheduleId ? "Edit" : "Create"} Schedule</DialogTitle>
+					<DialogDescription>
+						{scheduleId ? "Manage" : "Create"} a schedule to run a task at a
+						specific time or interval.
+					</DialogDescription>
 				</DialogHeader>
 				<Form {...form}>
 					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -373,63 +459,9 @@ export const HandleSchedules = ({ id, scheduleId, scheduleType }: Props) => {
 							)}
 						/>
 
-						<FormField
-							control={form.control}
+						<ScheduleFormField
 							name="cronExpression"
-							render={({ field }) => (
-								<FormItem>
-									<FormLabel className="flex items-center gap-2">
-										Schedule
-										<TooltipProvider>
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<Info className="w-4 h-4 text-muted-foreground cursor-help" />
-												</TooltipTrigger>
-												<TooltipContent>
-													<p>
-														Cron expression format: minute hour day month
-														weekday
-													</p>
-													<p>Example: 0 0 * * * (daily at midnight)</p>
-												</TooltipContent>
-											</Tooltip>
-										</TooltipProvider>
-									</FormLabel>
-									<div className="flex flex-col gap-2">
-										<Select
-											onValueChange={(value) => {
-												field.onChange(value);
-											}}
-										>
-											<FormControl>
-												<SelectTrigger>
-													<SelectValue placeholder="Select a predefined schedule" />
-												</SelectTrigger>
-											</FormControl>
-											<SelectContent>
-												{commonCronExpressions.map((expr) => (
-													<SelectItem key={expr.value} value={expr.value}>
-														{expr.label} ({expr.value})
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<div className="relative">
-											<FormControl>
-												<Input
-													placeholder="Custom cron expression (e.g., 0 0 * * *)"
-													{...field}
-												/>
-											</FormControl>
-										</div>
-									</div>
-									<FormDescription>
-										Choose a predefined schedule or enter a custom cron
-										expression
-									</FormDescription>
-									<FormMessage />
-								</FormItem>
-							)}
+							formControl={form.control}
 						/>
 
 						{(scheduleTypeForm === "application" ||

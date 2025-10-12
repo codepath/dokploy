@@ -132,7 +132,11 @@ export const apiCreateServer = createSchema
 		username: true,
 		sshKeyId: true,
 	})
-	.required();
+	.required()
+	.transform((data) => ({
+		...data,
+		ipAddress: data.ipAddress?.trim() || "",
+	}));
 
 export const apiFindOneServer = createSchema
 	.pick({
@@ -159,7 +163,11 @@ export const apiUpdateServer = createSchema
 	.required()
 	.extend({
 		command: z.string().optional(),
-	});
+	})
+	.transform((data) => ({
+		...data,
+		ipAddress: data.ipAddress?.trim() || "",
+	}));
 
 export const apiUpdateServerMonitoring = createSchema
 	.pick({

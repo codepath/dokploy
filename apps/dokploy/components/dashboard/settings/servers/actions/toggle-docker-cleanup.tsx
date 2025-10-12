@@ -1,7 +1,7 @@
+import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { api } from "@/utils/api";
-import { toast } from "sonner";
 
 interface Props {
 	serverId?: string;
@@ -20,7 +20,9 @@ export const ToggleDockerCleanup = ({ serverId }: Props) => {
 		},
 	);
 
-	const enabled = data?.user.enableDockerCleanup || server?.enableDockerCleanup;
+	const enabled = serverId
+		? server?.enableDockerCleanup
+		: data?.user.enableDockerCleanup;
 
 	const { mutateAsync } = api.settings.updateDockerCleanup.useMutation();
 
@@ -36,7 +38,7 @@ export const ToggleDockerCleanup = ({ serverId }: Props) => {
 				await refetch();
 			}
 			toast.success("Docker Cleanup updated");
-		} catch (_error) {
+		} catch {
 			toast.error("Docker Cleanup Error");
 		}
 	};

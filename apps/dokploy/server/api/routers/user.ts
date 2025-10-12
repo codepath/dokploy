@@ -1,11 +1,11 @@
 import {
-	IS_CLOUD,
 	createApiKey,
 	findAdmin,
 	findNotificationById,
 	findOrganizationById,
 	findUserById,
 	getUserByToken,
+	IS_CLOUD,
 	removeUserById,
 	sendEmailNotification,
 	updateUser,
@@ -15,8 +15,8 @@ import {
 	account,
 	apiAssignPermissions,
 	apiFindOneToken,
-	apiUpdateUser,
 	apikey,
+	apiUpdateUser,
 	invitation,
 	member,
 } from "@dokploy/server/db/schema";
@@ -74,6 +74,24 @@ export const userRouter = createTRPCRouter({
 					user: true,
 				},
 			});
+
+			// If user not found in the organization, deny access
+			if (!memberResult) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "User not found in this organization",
+				});
+			}
+
+			// Allow access if:
+			// 1. User is requesting their own information
+			// 2. User has owner role (admin permissions) AND user is in the same organization
+			if (memberResult.userId !== ctx.user.id && ctx.user.role !== "owner") {
+				throw new TRPCError({
+					code: "UNAUTHORIZED",
+					message: "You are not authorized to access this user",
+				});
+			}
 
 			return memberResult;
 		}),
@@ -174,7 +192,16 @@ export const userRouter = createTRPCRouter({
 					})
 					.where(eq(account.userId, ctx.user.id));
 			}
-			return await updateUser(ctx.user.id, input);
+
+			try {
+				return await updateUser(ctx.user.id, input);
+			} catch (error) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message:
+						error instanceof Error ? error.message : "Failed to update user",
+				});
+			}
 		}),
 	getUserByToken: publicProcedure
 		.input(apiFindOneToken)

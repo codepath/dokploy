@@ -1,3 +1,9 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
+import { AlertBlock } from "@/components/shared/alert-block";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -17,11 +23,6 @@ import {
 } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
 import { api } from "@/utils/api";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { z } from "zod";
 
 const formSchema = z.object({
 	rollbackActive: z.boolean(),
@@ -79,6 +80,11 @@ export const ShowRollbackSettings = ({ applicationId, children }: Props) => {
 					<DialogDescription>
 						Configure how rollbacks work for this application
 					</DialogDescription>
+					<AlertBlock>
+						Having rollbacks enabled increases storage usage. Be careful with
+						this option. Note that manually cleaning the cache may delete
+						rollback images, making them unavailable for future rollbacks.
+					</AlertBlock>
 				</DialogHeader>
 
 				<Form {...form}>

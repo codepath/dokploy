@@ -1,4 +1,9 @@
+import { Clock, Loader2, RefreshCcw, RocketIcon, Settings } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { AlertBlock } from "@/components/shared/alert-block";
 import { DateTooltip } from "@/components/shared/date-tooltip";
+import { DialogAction } from "@/components/shared/dialog-action";
 import { StatusTooltip } from "@/components/shared/status-tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,15 +14,11 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { type RouterOutputs, api } from "@/utils/api";
-import { Clock, Loader2, RocketIcon, Settings, RefreshCcw } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { api, type RouterOutputs } from "@/utils/api";
+import { ShowRollbackSettings } from "../rollbacks/show-rollback-settings";
 import { CancelQueues } from "./cancel-queues";
 import { RefreshToken } from "./refresh-token";
 import { ShowDeployment } from "./show-deployment";
-import { ShowRollbackSettings } from "../rollbacks/show-rollback-settings";
-import { DialogAction } from "@/components/shared/dialog-action";
-import { toast } from "sonner";
 
 interface Props {
 	id: string;
@@ -27,7 +28,8 @@ interface Props {
 		| "schedule"
 		| "server"
 		| "backup"
-		| "previewDeployment";
+		| "previewDeployment"
+		| "volumeBackup";
 	refreshToken?: string;
 	serverId?: string;
 }
@@ -60,10 +62,48 @@ export const ShowDeployments = ({
 			},
 		);
 
+	const { data: isCloud } = api.settings.isCloud.useQuery();
+
 	const { mutateAsync: rollback, isLoading: isRollingBack } =
 		api.rollback.rollback.useMutation();
+	const { mutateAsync: killProcess, isLoading: isKillingProcess } =
+		api.deployment.killProcess.useMutation();
+
+	// Cancel deployment mutations
+	const {
+		mutateAsync: cancelApplicationDeployment,
+		isLoading: isCancellingApp,
+	} = api.application.cancelDeployment.useMutation();
+	const {
+		mutateAsync: cancelComposeDeployment,
+		isLoading: isCancellingCompose,
+	} = api.compose.cancelDeployment.useMutation();
 
 	const [url, setUrl] = React.useState("");
+
+	// Check for stuck deployment (more than 9 minutes) - only for the most recent deployment
+	const stuckDeployment = useMemo(() => {
+		if (!isCloud || !deployments || deployments.length === 0) return null;
+
+		const now = Date.now();
+		const NINE_MINUTES = 10 * 60 * 1000; // 9 minutes in milliseconds
+
+		// Get the most recent deployment (first in the list since they're sorted by date)
+		const mostRecentDeployment = deployments[0];
+
+		if (
+			!mostRecentDeployment ||
+			mostRecentDeployment.status !== "running" ||
+			!mostRecentDeployment.startedAt
+		) {
+			return null;
+		}
+
+		const startTime = new Date(mostRecentDeployment.startedAt).getTime();
+		const elapsed = now - startTime;
+
+		return elapsed > NINE_MINUTES ? mostRecentDeployment : null;
+	}, [isCloud, deployments]);
 	useEffect(() => {
 		setUrl(document.location.origin);
 	}, []);
@@ -74,7 +114,7 @@ export const ShowDeployments = ({
 				<div className="flex flex-col gap-2">
 					<CardTitle className="text-xl">Deployments</CardTitle>
 					<CardDescription>
-						See all the 10 last deployments for this {type}
+						See the last 10 deployments for this {type}
 					</CardDescription>
 				</div>
 				<div className="flex flex-row items-center gap-2">
@@ -91,6 +131,54 @@ export const ShowDeployments = ({
 				</div>
 			</CardHeader>
 			<CardContent className="flex flex-col gap-4">
+				{stuckDeployment && (type === "application" || type === "compose") && (
+					<AlertBlock
+						type="warning"
+						className="flex-col items-start w-full p-4"
+					>
+						<div className="flex flex-col gap-3">
+							<div>
+								<div className="font-medium text-sm mb-1">
+									Build appears to be stuck
+								</div>
+								<p className="text-sm">
+									Hey! Looks like the build has been running for more than 10
+									minutes. Would you like to cancel this deployment?
+								</p>
+							</div>
+							<Button
+								variant="destructive"
+								size="sm"
+								className="w-fit"
+								isLoading={
+									type === "application" ? isCancellingApp : isCancellingCompose
+								}
+								onClick={async () => {
+									try {
+										if (type === "application") {
+											await cancelApplicationDeployment({
+												applicationId: id,
+											});
+										} else if (type === "compose") {
+											await cancelComposeDeployment({
+												composeId: id,
+											});
+										}
+										toast.success("Deployment cancellation requested");
+									} catch (error) {
+										toast.error(
+											error instanceof Error
+												? error.message
+												: "Failed to cancel deployment",
+										);
+									}
+								}}
+							>
+								Cancel Deployment
+							</Button>
+						</div>
+					</AlertBlock>
+				)}
 				{refreshToken && (
 					<div className="flex flex-col gap-2 text-sm">
 						<span>
@@ -101,7 +189,9 @@ export const ShowDeployments = ({
 							<span>Webhook URL: </span>
 							<div className="flex flex-row items-center gap-2">
 								<span className="break-all text-muted-foreground">
-									{`${url}/api/deploy${type === "compose" ? "/compose" : ""}/${refreshToken}`}
+									{`${url}/api/deploy${
+										type === "compose" ? "/compose" : ""
+									}/${refreshToken}`}
 								</span>
 								{(type === "application" || type === "compose") && (
 									<RefreshToken id={id} type={type} />
@@ -170,6 +260,32 @@ export const ShowDeployments = ({
 									</div>
 
 									<div className="flex flex-row items-center gap-2">
+										{deployment.pid && deployment.status === "running" && (
+											<DialogAction
+												title="Kill Process"
+												description="Are you sure you want to kill the process?"
+												type="default"
+												onClick={async () => {
+													await killProcess({
+														deploymentId: deployment.deploymentId,
+													})
+														.then(() => {
+															toast.success("Process killed successfully");
+														})
+														.catch(() => {
+															toast.error("Error killing process");
+														});
+												}}
+											>
+												<Button
+													variant="destructive"
+													size="sm"
+													isLoading={isKillingProcess}
+												>
+													Kill Process
+												</Button>
+											</DialogAction>
+										)}
 										<Button
 											onClick={() => {
 												setActiveLog(deployment);

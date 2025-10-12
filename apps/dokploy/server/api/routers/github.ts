@@ -1,3 +1,12 @@
+import {
+	findGithubById,
+	getGithubBranches,
+	getGithubRepositories,
+	haveGithubRequirements,
+	updateGithub,
+	updateGitProvider,
+} from "@dokploy/server";
+import { TRPCError } from "@trpc/server";
 import { createTRPCRouter, protectedProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
 import {
@@ -5,14 +14,6 @@ import {
 	apiFindOneGithub,
 	apiUpdateGithub,
 } from "@/server/db/schema";
-import {
-	findGithubById,
-	getGithubBranches,
-	getGithubRepositories,
-	haveGithubRequirements,
-	updateGitProvider,
-} from "@dokploy/server";
-import { TRPCError } from "@trpc/server";
 
 export const githubRouter = createTRPCRouter({
 	one: protectedProcedure
@@ -133,6 +134,10 @@ export const githubRouter = createTRPCRouter({
 			await updateGitProvider(input.gitProviderId, {
 				name: input.name,
 				organizationId: ctx.session.activeOrganizationId,
+			});
+
+			await updateGithub(input.githubId, {
+				...input,
 			});
 		}),
 });

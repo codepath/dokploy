@@ -29,6 +29,9 @@ const { handler, api } = betterAuth({
 			clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
 		},
 	},
+	logger: {
+		disabled: process.env.NODE_ENV === "production",
+	},
 	...(!IS_CLOUD && {
 		async trustedOrigins() {
 			const admin = await db.query.member.findFirst({
@@ -298,11 +301,7 @@ export const validateRequest = async (request: IncomingMessage) => {
 
 			const mockSession = {
 				session: {
-					user: {
-						id: apiKeyRecord.user.id,
-						email: apiKeyRecord.user.email,
-						name: apiKeyRecord.user.name,
-					},
+					userId: apiKeyRecord.user.id,
 					activeOrganizationId: organizationId || "",
 				},
 				user: {

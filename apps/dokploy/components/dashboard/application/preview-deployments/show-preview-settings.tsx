@@ -1,3 +1,10 @@
+import { zodResolver } from "@hookform/resolvers/zod";
+import { HelpCircle, Plus, Settings2, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -27,13 +34,13 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { api } from "@/utils/api";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Settings2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { toast } from "sonner";
-import { z } from "zod";
 
 const schema = z
 	.object({
@@ -42,10 +49,12 @@ const schema = z
 		wildcardDomain: z.string(),
 		port: z.number(),
 		previewLimit: z.number(),
+		previewLabels: z.array(z.string()).optional(),
 		previewHttps: z.boolean(),
 		previewPath: z.string(),
 		previewCertificateType: z.enum(["letsencrypt", "none", "custom"]),
 		previewCustomCertResolver: z.string().optional(),
+		previewRequireCollaboratorPermissions: z.boolean(),
 	})
 	.superRefine((input, ctx) => {
 		if (
@@ -80,9 +89,11 @@ export const ShowPreviewSettings = ({ applicationId }: Props) => {
 			wildcardDomain: "*.traefik.me",
 			port: 3000,
 			previewLimit: 3,
+			previewLabels: [],
 			previewHttps: false,
 			previewPath: "/",
 			previewCertificateType: "none",
+			previewRequireCollaboratorPermissions: true,
 		},
 		resolver: zodResolver(schema),
 	});
@@ -100,11 +111,14 @@ export const ShowPreviewSettings = ({ applicationId }: Props) => {
 				buildArgs: data.previewBuildArgs || "",
 				wildcardDomain: data.previewWildcard || "*.traefik.me",
 				port: data.previewPort || 3000,
+				previewLabels: data.previewLabels || [],
 				previewLimit: data.previewLimit || 3,
 				previewHttps: data.previewHttps || false,
 				previewPath: data.previewPath || "/",
 				previewCertificateType: data.previewCertificateType || "none",
 				previewCustomCertResolver: data.previewCustomCertResolver || "",
+				previewRequireCollaboratorPermissions:
+					data.previewRequireCollaboratorPermissions || true,
 			});
 		}
 	}, [data]);
@@ -115,12 +129,15 @@ export const ShowPreviewSettings = ({ applicationId }: Props) => {
 			previewBuildArgs: formData.buildArgs,
 			previewWildcard: formData.wildcardDomain,
 			previewPort: formData.port,
+			previewLabels: formData.previewLabels,
 			applicationId,
 			previewLimit: formData.previewLimit,
 			previewHttps: formData.previewHttps,
 			previewPath: formData.previewPath,
 			previewCertificateType: formData.previewCertificateType,
 			previewCustomCertResolver: formData.previewCustomCertResolver,
+			previewRequireCollaboratorPermissions:
+				formData.previewRequireCollaboratorPermissions,
 		})
 			.then(() => {
 				toast.success("Preview Deployments settings updated");
@@ -138,7 +155,7 @@ export const ShowPreviewSettings = ({ applicationId }: Props) => {
 						Configure
 					</Button>
 				</DialogTrigger>
-				<DialogContent className="max-h-screen overflow-y-auto sm:max-w-5xl w-full">
+				<DialogContent className="sm:max-w-5xl w-full">
 					<DialogHeader>
 						<DialogTitle>Preview Deployment Settings</DialogTitle>
 						<DialogDescription>
@@ -190,6 +207,90 @@ export const ShowPreviewSettings = ({ applicationId }: Props) => {
 												<FormControl>
 													<NumberInput placeholder="3000" {...field} />
 												</FormControl>
+												<FormMessage />
+											</FormItem>
+										)}
+									/>
+									<FormField
+										control={form.control}
+										name="previewLabels"
+										render={({ field }) => (
+											<FormItem className="md:col-span-2">
+												<div className="flex items-center gap-2">
+													<FormLabel>Preview Labels</FormLabel>
+													<TooltipProvider>
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<HelpCircle className="size-4 text-muted-foreground hover:text-foreground transition-colors cursor-pointer" />
+															</TooltipTrigger>
+															<TooltipContent>
+																<p>
+																	Add a labels that will trigger a preview
+																	deployment for a pull request. If no labels
+																	are specified, all pull requests will trigger
+																	a preview deployment.
+																</p>
+															</TooltipContent>
+														</Tooltip>
+													</TooltipProvider>
+												</div>
+												<div className="flex flex-wrap gap-2 mb-2">
+													{field.value?.map((label, index) => (
+														<Badge
+															key={index}
+															variant="secondary"
+															className="flex items-center gap-1"
+														>
+															{label}
+															<X
+																className="size-3 cursor-pointer hover:text-destructive"
+																onClick={() => {
+																	const newLabels = [...(field.value || [])];
+																	newLabels.splice(index, 1);
+																	field.onChange(newLabels);
+																}}
+															/>
+														</Badge>
+													))}
+												</div>
+												<div className="flex gap-2">
+													<FormControl>
+														<Input
+															placeholder="Enter a label (e.g. enhancements, needs-review)"
+															onKeyDown={(e) => {
+																if (e.key === "Enter") {
+																	e.preventDefault();
+																	const input = e.currentTarget;
+																	const label = input.value.trim();
+																	if (label) {
+																		field.onChange([
+																			...(field.value || []),
+																			label,
+																		]);
+																		input.value = "";
+																	}
+																}
+															}}
+														/>
+													</FormControl>
+													<Button
+														type="button"
+														variant="outline"
+														size="icon"
+														onClick={() => {
+															const input = document.querySelector(
+																'input[placeholder*="Enter a label"]',
+															) as HTMLInputElement;
+															const label = input.value.trim();
+															if (label) {
+																field.onChange([...(field.value || []), label]);
+																input.value = "";
+															}
+														}}
+													>
+														<Plus className="size-4" />
+													</Button>
+												</div>
 												<FormMessage />
 											</FormItem>
 										)}
@@ -310,6 +411,37 @@ export const ShowPreviewSettings = ({ applicationId }: Props) => {
 											}}
 										/>
 									</div>
+								</div>
+
+								<div className="grid gap-4 lg:grid-cols-2">
+									<FormField
+										control={form.control}
+										name="previewRequireCollaboratorPermissions"
+										render={({ field }) => (
+											<FormItem className="flex flex-row items-center justify-between p-3 mt-4 border rounded-lg shadow-sm col-span-2">
+												<div className="space-y-0.5">
+													<FormLabel>
+														Require Collaborator Permissions
+													</FormLabel>
+													<FormDescription>
+														Require collaborator permissions to preview
+														deployments, valid roles are:
+														<ul>
+															<li>Admin</li>
+															<li>Maintain</li>
+															<li>Write</li>
+														</ul>
+													</FormDescription>
+												</div>
+												<FormControl>
+													<Switch
+														checked={field.value}
+														onCheckedChange={field.onChange}
+													/>
+												</FormControl>
+											</FormItem>
+										)}
+									/>
 								</div>
 
 								<FormField

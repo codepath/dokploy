@@ -22,7 +22,7 @@ import { spawnAsync } from "../process/spawnAsync";
 
 export type ComposeNested = InferResultType<
 	"compose",
-	{ project: true; mounts: true; domains: true }
+	{ environment: { with: { project: true } }; mounts: true; domains: true }
 >;
 export const buildCompose = async (compose: ComposeNested, logPath: string) => {
 	const writeStream = createWriteStream(logPath, { flags: "a" });
@@ -72,7 +72,10 @@ export const buildCompose = async (compose: ComposeNested, logPath: string) => {
 					NODE_ENV: process.env.NODE_ENV,
 					PATH: process.env.PATH,
 					...(composeType === "stack" && {
-						...getEnviromentVariablesObject(compose.env, compose.project.env),
+						...getEnviromentVariablesObject(
+							compose.env,
+							compose.environment.project.env,
+						),
 					}),
 				},
 			},
@@ -193,7 +196,7 @@ const createEnvFile = (compose: ComposeNested) => {
 	let envContent = `APP_NAME=${appName}\n`;
 	envContent += env || "";
 	if (!envContent.includes("DOCKER_CONFIG")) {
-		envContent += "\nDOCKER_CONFIG=/root/.docker/config.json";
+		envContent += "\nDOCKER_CONFIG=/root/.docker";
 	}
 
 	if (compose.randomize) {
@@ -202,7 +205,8 @@ const createEnvFile = (compose: ComposeNested) => {
 
 	const envFileContent = prepareEnvironmentVariables(
 		envContent,
-		compose.project.env,
+		compose.environment.project.env,
+		compose.environment.env,
 	).join("\n");
 
 	if (!existsSync(dirname(envFilePath))) {
@@ -223,7 +227,7 @@ export const getCreateEnvFileCommand = (compose: ComposeNested) => {
 	let envContent = `APP_NAME=${appName}\n`;
 	envContent += env || "";
 	if (!envContent.includes("DOCKER_CONFIG")) {
-		envContent += "\nDOCKER_CONFIG=/root/.docker/config.json";
+		envContent += "\nDOCKER_CONFIG=/root/.docker";
 	}
 
 	if (compose.randomize) {
@@ -232,7 +236,8 @@ export const getCreateEnvFileCommand = (compose: ComposeNested) => {
 
 	const envFileContent = prepareEnvironmentVariables(
 		envContent,
-		compose.project.env,
+		compose.environment.project.env,
+		compose.environment.env,
 	).join("\n");
 
 	const encodedContent = encodeBase64(envFileContent);
@@ -247,7 +252,7 @@ const getExportEnvCommand = (compose: ComposeNested) => {
 
 	const envVars = getEnviromentVariablesObject(
 		compose.env,
-		compose.project.env,
+		compose.environment.project.env,
 	);
 	const exports = Object.entries(envVars)
 		.map(([key, value]) => `export ${key}=${JSON.stringify(value)}`)

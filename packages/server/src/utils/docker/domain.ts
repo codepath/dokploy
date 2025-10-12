@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { paths } from "@dokploy/server/constants";
 import type { Compose } from "@dokploy/server/services/compose";
 import type { Domain } from "@dokploy/server/services/domain";
-import { dump, load } from "js-yaml";
+import { parse, stringify } from "yaml";
 import { execAsyncRemote } from "../process/execAsync";
 import {
 	cloneRawBitbucketRepository,
@@ -92,7 +92,7 @@ export const loadDockerCompose = async (
 
 	if (existsSync(path)) {
 		const yamlStr = readFileSync(path, "utf8");
-		const parsedConfig = load(yamlStr) as ComposeSpecification;
+		const parsedConfig = parse(yamlStr) as ComposeSpecification;
 		return parsedConfig;
 	}
 	return null;
@@ -115,9 +115,9 @@ export const loadDockerComposeRemote = async (
 			return null;
 		}
 		if (!stdout) return null;
-		const parsedConfig = load(stdout) as ComposeSpecification;
+		const parsedConfig = parse(stdout) as ComposeSpecification;
 		return parsedConfig;
-	} catch (_err) {
+	} catch {
 		return null;
 	}
 };
@@ -141,7 +141,7 @@ export const writeDomainsToCompose = async (
 	const composeConverted = await addDomainToCompose(compose, domains);
 
 	const path = getComposePath(compose);
-	const composeString = dump(composeConverted, { lineWidth: 1000 });
+	const composeString = stringify(composeConverted, { lineWidth: 1000 });
 	try {
 		await writeFile(path, composeString, "utf8");
 	} catch (error) {
@@ -169,7 +169,7 @@ exit 1;
 			`;
 		}
 		if (compose.serverId) {
-			const composeString = dump(composeConverted, { lineWidth: 1000 });
+			const composeString = stringify(composeConverted, { lineWidth: 1000 });
 			const encodedContent = encodeBase64(composeString);
 			return `echo "${encodedContent}" | base64 -d > "${path}";`;
 		}
@@ -202,6 +202,7 @@ export const addDomainToCompose = async (
 	if (compose.isolatedDeployment) {
 		const randomized = randomizeDeployableSpecificationFile(
 			result,
+			compose.isolatedDeploymentsVolume,
 			compose.suffix || compose.appName,
 		);
 		result = randomized;
@@ -250,8 +251,15 @@ export const addDomainToCompose = async (
 			}
 			labels.unshift(...httpLabels);
 			if (!compose.isolatedDeployment) {
-				if (!labels.includes("traefik.docker.network=dokploy-network")) {
-					labels.unshift("traefik.docker.network=dokploy-network");
+				if (compose.composeType === "docker-compose") {
+					if (!labels.includes("traefik.docker.network=dokploy-network")) {
+						labels.unshift("traefik.docker.network=dokploy-network");
+					}
+				} else {
+					// Stack Case
+					if (!labels.includes("traefik.swarm.network=dokploy-network")) {
+						labels.unshift("traefik.swarm.network=dokploy-network");
+					}
 				}
 			}
 		}
@@ -279,7 +287,7 @@ export const writeComposeFile = async (
 	const path = getComposePath(compose);
 
 	try {
-		const composeFile = dump(composeSpec, {
+		const composeFile = stringify(composeSpec, {
 			lineWidth: 1000,
 		});
 		fs.writeFileSync(path, composeFile, "utf8");
@@ -301,6 +309,8 @@ export const createDomainLabels = (
 		certificateType,
 		path,
 		customCertResolver,
+		stripPath,
+		internalPath,
 	} = domain;
 	const routerName = `${appName}-${uniqueConfigKey}-${entrypoint}`;
 	const labels = [
@@ -310,12 +320,46 @@ export const createDomainLabels = (
 		`traefik.http.routers.${routerName}.service=${routerName}`,
 	];
 
+	// Collect middlewares for this router
+	const middlewares: string[] = [];
+
+	// Add HTTPS redirect for web entrypoint (must be first)
 	if (entrypoint === "web" && https) {
+		middlewares.push("redirect-to-https@file");
+	}
+
+	// Add stripPath middleware if needed
+	if (stripPath && path && path !== "/") {
+		const middlewareName = `stripprefix-${appName}-${uniqueConfigKey}`;
+		// Only define middleware once (on web entrypoint)
+		if (entrypoint === "web") {
+			labels.push(
+				`traefik.http.middlewares.${middlewareName}.stripprefix.prefixes=${path}`,
+			);
+		}
+		middlewares.push(middlewareName);
+	}
+
+	// Add internalPath middleware if needed
+	if (internalPath && internalPath !== "/" && internalPath.startsWith("/")) {
+		const middlewareName = `addprefix-${appName}-${uniqueConfigKey}`;
+		// Only define middleware once (on web entrypoint)
+		if (entrypoint === "web") {
+			labels.push(
+				`traefik.http.middlewares.${middlewareName}.addprefix.prefix=${internalPath}`,
+			);
+		}
+		middlewares.push(middlewareName);
+	}
+
+	// Apply middlewares to router if any exist
+	if (middlewares.length > 0) {
 		labels.push(
-			`traefik.http.routers.${routerName}.middlewares=redirect-to-https@file`,
+			`traefik.http.routers.${routerName}.middlewares=${middlewares.join(",")}`,
 		);
 	}
 
+	// Add TLS configuration for websecure
 	if (entrypoint === "websecure") {
 		if (certificateType === "letsencrypt") {
 			labels.push(

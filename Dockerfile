@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1
-FROM node:20.9-slim AS base
+FROM node:20.16.0-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
+RUN corepack prepare pnpm@9.12.0 --activate
 
 FROM base AS build
 COPY . /usr/src/app
@@ -57,7 +58,7 @@ RUN curl -sSL https://nixpacks.com/install.sh -o install.sh \
     && pnpm install -g tsx
 
 # Install Railpack
-ARG RAILPACK_VERSION=0.0.64
+ARG RAILPACK_VERSION=0.2.2
 RUN curl -sSL https://railpack.com/install.sh | bash
 
 # Install buildpacks

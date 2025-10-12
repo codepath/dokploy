@@ -1,3 +1,4 @@
+import { paths } from "@dokploy/server/constants";
 import { relations } from "drizzle-orm";
 import {
 	boolean,
@@ -174,6 +175,7 @@ export const apiAssignPermissions = createSchema
 	})
 	.extend({
 		accessedProjects: z.array(z.string()).optional(),
+		accessedEnvironments: z.array(z.string()).optional(),
 		accessedServices: z.array(z.string()).optional(),
 		canCreateProjects: z.boolean().optional(),
 		canCreateServices: z.boolean().optional(),
@@ -236,7 +238,31 @@ export const apiModifyTraefikConfig = z.object({
 	serverId: z.string().optional(),
 });
 export const apiReadTraefikConfig = z.object({
-	path: z.string().min(1),
+	path: z
+		.string()
+		.min(1)
+		.refine(
+			(path) => {
+				// Prevent directory traversal attacks
+				if (path.includes("../") || path.includes("..\\")) {
+					return false;
+				}
+
+				const { MAIN_TRAEFIK_PATH } = paths();
+				if (path.startsWith("/") && !path.startsWith(MAIN_TRAEFIK_PATH)) {
+					return false;
+				}
+				// Prevent null bytes and other dangerous characters
+				if (path.includes("\0") || path.includes("\x00")) {
+					return false;
+				}
+				return true;
+			},
+			{
+				message:
+					"Invalid path: path traversal or unauthorized directory access detected",
+			},
+		),
 	serverId: z.string().optional(),
 });
 
@@ -296,8 +322,14 @@ export const apiUpdateWebServerMonitoring = z.object({
 });
 
 export const apiUpdateUser = createSchema.partial().extend({
+	email: z
+		.string()
+		.email("Please enter a valid email address")
+		.min(1, "Email is required")
+		.optional(),
 	password: z.string().optional(),
 	currentPassword: z.string().optional(),
+	name: z.string().optional(),
 	metricsConfig: z
 		.object({
 			server: z.object({

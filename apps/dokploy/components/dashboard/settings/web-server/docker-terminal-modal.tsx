@@ -1,3 +1,7 @@
+import { Loader2 } from "lucide-react";
+import dynamic from "next/dynamic";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,10 +24,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/utils/api";
-import { Loader2 } from "lucide-react";
-import dynamic from "next/dynamic";
-import type React from "react";
-import { useEffect, useState } from "react";
 import { badgeStateColor } from "../../application/logs/show";
 
 const Terminal = dynamic(
@@ -83,7 +83,7 @@ export const DockerTerminalModal = ({ children, appName, serverId }: Props) => {
 		<Dialog open={mainDialogOpen} onOpenChange={handleMainDialogOpenChange}>
 			<DialogTrigger asChild>{children}</DialogTrigger>
 			<DialogContent
-				className="max-h-[85vh]    overflow-y-auto sm:max-w-7xl"
+				className="max-h-[85vh]    sm:max-w-7xl"
 				onEscapeKeyDown={(event) => event.preventDefault()}
 			>
 				<DialogHeader>

@@ -6,17 +6,16 @@ import {
 } from "@dokploy/server/services/deployment";
 import { findServerById } from "@dokploy/server/services/server";
 import {
+	getDefaultMiddlewares,
+	getDefaultServerTraefikConfig,
 	TRAEFIK_HTTP3_PORT,
 	TRAEFIK_PORT,
 	TRAEFIK_SSL_PORT,
 	TRAEFIK_VERSION,
-	getDefaultMiddlewares,
-	getDefaultServerTraefikConfig,
 } from "@dokploy/server/setup/traefik-setup";
+import slug from "slugify";
 import { Client } from "ssh2";
 import { recreateDirectory } from "../utils/filesystem/directory";
-
-import slug from "slugify";
 
 export const slugify = (text: string | undefined) => {
 	if (!text) {
@@ -419,14 +418,26 @@ if ! [ -x "$(command -v docker)" ]; then
             systemctl enable docker >/dev/null 2>&1
             ;;
 	"opencloudos")
-	    dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo >/dev/null 2>&1
-            dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin >/dev/null 2>&1
+            # Special handling for OpenCloud OS
+            echo " - Installing Docker for OpenCloud OS..."
+            dnf install -y docker >/dev/null 2>&1
             if ! [ -x "$(command -v docker)" ]; then
                 echo " - Docker could not be installed automatically. Please visit https://docs.docker.com/engine/install/ and install Docker manually to continue."
                 exit 1
             fi
-            systemctl start docker >/dev/null 2>&1
+            
+            # Remove --live-restore parameter from Docker configuration if it exists
+            if [ -f "/etc/sysconfig/docker" ]; then
+                echo " - Removing --live-restore parameter from Docker configuration..."
+                sed -i 's/--live-restore[^[:space:]]*//' /etc/sysconfig/docker >/dev/null 2>&1
+                sed -i 's/--live-restore//' /etc/sysconfig/docker >/dev/null 2>&1
+                # Clean up any double spaces that might be left
+                sed -i 's/  */ /g' /etc/sysconfig/docker >/dev/null 2>&1
+            fi
+            
             systemctl enable docker >/dev/null 2>&1
+            systemctl start docker >/dev/null 2>&1
+            echo " - Docker configured for OpenCloud OS"
             ;;
         "alpine")
             apk add docker docker-cli-compose >/dev/null 2>&1
@@ -567,8 +578,7 @@ export const createTraefikInstance = () => {
 			TRAEFIK_VERSION=${TRAEFIK_VERSION}
 			docker run -d \
 				--name dokploy-traefik \
-				--network dokploy-network \
-				--restart unless-stopped \
+				--restart always \
 				-v /etc/dokploy/traefik/traefik.yml:/etc/traefik/traefik.yml \
 				-v /etc/dokploy/traefik/dynamic:/etc/dokploy/traefik/dynamic \
 				-v /var/run/docker.sock:/var/run/docker.sock \
@@ -576,6 +586,8 @@ export const createTraefikInstance = () => {
 				-p ${TRAEFIK_PORT}:${TRAEFIK_PORT} \
 				-p ${TRAEFIK_HTTP3_PORT}:${TRAEFIK_HTTP3_PORT}/udp \
 				traefik:v$TRAEFIK_VERSION
+
+			docker network connect dokploy-network dokploy-traefik;
 			echo "Traefik version $TRAEFIK_VERSION installed ✅"
 		fi
 	`;
@@ -597,7 +609,7 @@ const installRailpack = () => `
 	if command_exists railpack; then
 		echo "Railpack already installed ✅"
 	else
-	    export RAILPACK_VERSION=0.0.64
+	    export RAILPACK_VERSION=0.2.2
 		bash -c "$(curl -fsSL https://railpack.com/install.sh)"
 		echo "Railpack version $RAILPACK_VERSION installed ✅"
 	fi

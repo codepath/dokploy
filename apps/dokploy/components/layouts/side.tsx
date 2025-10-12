@@ -1,4 +1,5 @@
 "use client";
+import type { inferRouterOutputs } from "@trpc/server";
 import {
 	Activity,
 	BarChartHorizontalBigIcon,
@@ -29,10 +30,10 @@ import {
 	User,
 	Users,
 } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type * as React from "react";
 import { useEffect, useState } from "react";
-
+import { toast } from "sonner";
 import {
 	Breadcrumb,
 	BreadcrumbItem,
@@ -77,10 +78,6 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import type { AppRouter } from "@/server/api/root";
 import { api } from "@/utils/api";
-import type { inferRouterOutputs } from "@trpc/server";
-import Link from "next/link";
-import { useRouter } from "next/router";
-import { toast } from "sonner";
 import { AddOrganization } from "../dashboard/organization/handle-organization";
 import { DialogAction } from "../shared/dialog-action";
 import { Logo } from "../shared/logo";
@@ -96,10 +93,7 @@ type SingleNavItem = {
 	title: string;
 	url: string;
 	icon?: LucideIcon;
-	isEnabled?: (opts: {
-		auth?: AuthQueryOutput;
-		isCloud: boolean;
-	}) => boolean;
+	isEnabled?: (opts: { auth?: AuthQueryOutput; isCloud: boolean }) => boolean;
 };
 
 // NavItem type
@@ -125,10 +119,7 @@ type ExternalLink = {
 	name: string;
 	url: string;
 	icon: React.ComponentType<{ className?: string }>;
-	isEnabled?: (opts: {
-		auth?: AuthQueryOutput;
-		isCloud: boolean;
-	}) => boolean;
+	isEnabled?: (opts: { auth?: AuthQueryOutput; isCloud: boolean }) => boolean;
 };
 
 // Menu type
@@ -776,9 +767,7 @@ export default function Page({ children }: Props) {
 		setIsLoaded(true);
 	}, []);
 
-	const router = useRouter();
 	const pathname = usePathname();
-	const _currentPath = router.pathname;
 	const { data: auth } = api.user.get.useQuery();
 	const { data: dokployVersion } = api.settings.getDokployVersion.useQuery();
 

@@ -1,5 +1,4 @@
 import { createWriteStream } from "node:fs";
-import { join } from "node:path";
 import type { InferResultType } from "@dokploy/server/types/with";
 import type { CreateServiceOptions } from "dockerode";
 import { uploadImage, uploadImageRemoteCommand } from "../cluster/upload";
@@ -31,7 +30,7 @@ export type ApplicationNested = InferResultType<
 		redirects: true;
 		ports: true;
 		registry: true;
-		project: true;
+		environment: { with: { project: true } };
 	}
 >;
 
@@ -149,7 +148,8 @@ export const mechanizeDockerContainer = async (
 	const filesMount = generateFileMounts(appName, application);
 	const envVariables = prepareEnvironmentVariables(
 		env,
-		application.project.env,
+		application.environment.project.env,
+		application.environment.env,
 	);
 
 	const image = getImageName(application);
@@ -184,6 +184,7 @@ export const mechanizeDockerContainer = async (
 		RollbackConfig,
 		EndpointSpec: {
 			Ports: ports.map((port) => ({
+				PublishMode: port.publishMode,
 				Protocol: port.protocol,
 				TargetPort: port.targetPort,
 				PublishedPort: port.publishedPort,
@@ -204,26 +205,30 @@ export const mechanizeDockerContainer = async (
 				ForceUpdate: inspect.Spec.TaskTemplate.ForceUpdate + 1,
 			},
 		});
-	} catch (_error: unknown) {
+	} catch {
 		await docker.createService(settings);
 	}
 };
 
 const getImageName = (application: ApplicationNested) => {
 	const { appName, sourceType, dockerImage, registry } = application;
-
+	const imageName = `${appName}:latest`;
 	if (sourceType === "docker") {
 		return dockerImage || "ERROR-NO-IMAGE-PROVIDED";
 	}
 
 	if (registry) {
-		return join(registry.registryUrl, registry.imagePrefix || "", appName);
+		const { registryUrl, imagePrefix, username } = registry;
+		const registryTag = imagePrefix
+			? `${registryUrl ? `${registryUrl}/` : ""}${imagePrefix}/${imageName}`
+			: `${registryUrl ? `${registryUrl}/` : ""}${username}/${imageName}`;
+		return registryTag;
 	}
 
-	return `${appName}:latest`;
+	return imageName;
 };
 
-const getAuthConfig = (application: ApplicationNested) => {
+export const getAuthConfig = (application: ApplicationNested) => {
 	const { registry, username, password, sourceType, registryUrl } = application;
 
 	if (sourceType === "docker") {

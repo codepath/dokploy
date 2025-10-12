@@ -17,6 +17,7 @@ export const createServer = async (
 		.insert(server)
 		.values({
 			...input,
+			ipAddress: input.ipAddress?.trim() || "",
 			organizationId: organizationId,
 			createdAt: new Date().toISOString(),
 		})
@@ -115,6 +116,7 @@ export const updateServerById = async (
 		.update(server)
 		.set({
 			...serverData,
+			...(serverData.ipAddress && { ipAddress: serverData.ipAddress.trim() }),
 		})
 		.where(eq(server.serverId, serverId))
 		.returning()
