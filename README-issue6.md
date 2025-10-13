@@ -139,3 +139,93 @@ Add `type="button"` to both buttons in `ToggleVisibilityInput` component:
 3. **Verify:** Eye icon still toggles password visibility
 4. **Verify:** Copy icon still copies to clipboard
 5. **Verify:** No unexpected behavior changes
+
+---
+
+## Issue 2 Deep Dive: Password Display in Security List View
+
+### Location & Affected Code
+**File:** `apps/dokploy/components/dashboard/application/advanced/security/show-security.tsx`  
+**Lines:** 69-74
+
+### Problem Code
+```tsx
+<div className="flex flex-col gap-1">
+    <span className="font-medium">Password</span>
+    <span className="text-sm text-muted-foreground">
+        {security.password}  // ❌ Plain text display
+    </span>
+</div>
+```
+
+### Root Cause
+- Using plain `<span>` element to display password
+- No visibility toggle or copy functionality
+- Password exposed as plain text in the credentials list view
+
+### Solution Approach
+Replace `<span>` with `ToggleVisibilityInput` component using `disabled` prop:
+- Hidden password by default (dots/asterisks)
+- Eye icon toggle to show/hide
+- Copy-to-clipboard functionality
+- Read-only mode (can't edit, only view/copy)
+
+### Files to Modify
+1. `show-security.tsx` - Add import and replace span with ToggleVisibilityInput
+
+### Required Changes
+```tsx
+// Add import (line 1)
+import { ToggleVisibilityInput } from "@/components/shared/toggle-visibility-input";
+
+// Replace span with ToggleVisibilityInput (lines 69-74)
+<div className="flex flex-col gap-1">
+    <span className="font-medium">Password</span>
+    <ToggleVisibilityInput 
+        value={security.password}
+        disabled
+    />
+</div>
+```
+
+### Consistency with Other Features
+This fix follows the **exact same pattern** used in database credential views:
+
+**MySQL credentials example:**
+```tsx
+<ToggleVisibilityInput
+    disabled
+    value={data?.databasePassword}
+/>
+```
+
+**Security password display (after fix):**
+```tsx
+<ToggleVisibilityInput 
+    value={security.password}
+    disabled
+/>
+```
+
+Both use:
+- Same `ToggleVisibilityInput` component
+- Same `disabled` prop for read-only display
+- Same `value` prop for the password data
+- Same security features (toggle visibility + copy)
+
+### Testing Steps
+1. Navigate to App > Advanced > Security
+2. Ensure at least one security credential exists (create one if needed)
+3. **Verify:** Password shows as dots (••••) by default
+4. **Verify:** Click eye icon reveals password text
+5. **Verify:** Click eye icon again hides password back to dots
+6. **Verify:** Click copy icon copies password to clipboard with success toast
+7. **Verify:** Input is disabled (can't type/edit)
+8. **Verify:** Username field remains unchanged (plain text display)
+
+### Success Criteria
+- Password hidden by default in list view
+- Toggle visibility works for existing credentials
+- Copy functionality works for existing credentials
+- Consistent with database credential display patterns
+- No impact on edit functionality (handled separately in Issue 1)
