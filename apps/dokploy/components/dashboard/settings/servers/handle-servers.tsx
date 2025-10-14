@@ -112,13 +112,14 @@ export const HandleServers = ({ serverId }: Props) => {
 		await mutateAsync({
 			name: data.name,
 			description: data.description || "",
-			ipAddress: data.ipAddress || "",
+			ipAddress: data.ipAddress?.trim() || "",
 			port: data.port || 22,
 			username: data.username || "root",
 			sshKeyId: data.sshKeyId || "",
 			serverId: serverId || "",
 		})
 			.then(async (_data) => {
+				console.log("Trimmed IP Address")
 				await utils.server.all.invalidate();
 				refetchServer();
 				toast.success(serverId ? "Server Updated" : "Server Created");
