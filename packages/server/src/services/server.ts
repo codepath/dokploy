@@ -17,6 +17,7 @@ export const createServer = async (
 		.insert(server)
 		.values({
 			...input,
+			ipAddress: input.ipAddress?.trim(),
 			organizationId: organizationId,
 			createdAt: new Date().toISOString(),
 		})
