@@ -6,6 +6,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export async function generateSHA256Hash(text: string) {
+	// Check if crypto.subtle is available (browser context)
+	if (typeof crypto === "undefined" || !crypto.subtle) {
+		console.warn("crypto.subtle is not available");
+		return "";
+	}
+	
 	const encoder = new TextEncoder();
 	const data = encoder.encode(text);
 	const hashBuffer = await crypto.subtle.digest("SHA-256", data);

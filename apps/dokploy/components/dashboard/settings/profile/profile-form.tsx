@@ -104,11 +104,17 @@ export const ProfileForm = () => {
 			);
 			form.setValue("allowImpersonation", data?.user?.allowImpersonation);
 
-			if (data.user.email) {
-				generateSHA256Hash(data.user.email).then((hash) => {
-					setGravatarHash(hash);
+		if (data.user.email) {
+			generateSHA256Hash(data.user.email)
+				.then((hash) => {
+					if (hash) {
+						setGravatarHash(hash);
+					}
+				})
+				.catch((error) => {
+					console.error("Failed to generate gravatar hash:", error);
 				});
-			}
+		}
 		}
 	}, [form, data]);
 
