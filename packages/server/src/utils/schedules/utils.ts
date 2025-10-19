@@ -64,8 +64,8 @@ export const runCommand = async (scheduleId: string) => {
 					serverId,
 					`
 					set -e
-					echo "Running command: docker exec ${containerId} ${shellType} -c '${command}'" >> ${deployment.logPath};
-					docker exec ${containerId} ${shellType} -c '${command}' >> ${deployment.logPath} 2>> ${deployment.logPath} || { 
+					echo "Running command: docker exec -w / ${containerId} ${shellType} -c '${command}'" >> ${deployment.logPath};
+					docker exec -w / ${containerId} ${shellType} -c '${command}' >> ${deployment.logPath} 2>> ${deployment.logPath} || { 
 						echo "❌ Command failed" >> ${deployment.logPath};
 						exit 1;
 					}
@@ -81,11 +81,11 @@ export const runCommand = async (scheduleId: string) => {
 
 			try {
 				writeStream.write(
-					`docker exec ${containerId} ${shellType} -c ${command}\n`,
+					`docker exec -w / ${containerId} ${shellType} -c ${command}\n`,
 				);
 				await spawnAsync(
 					"docker",
-					["exec", containerId, shellType, "-c", command],
+					["exec", "-w", "/", containerId, shellType, "-c", command],
 					(data) => {
 						if (writeStream.writable) {
 							writeStream.write(data);

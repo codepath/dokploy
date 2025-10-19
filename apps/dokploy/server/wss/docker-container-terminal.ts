@@ -5,6 +5,35 @@ import { Client } from "ssh2";
 import { WebSocketServer } from "ws";
 import { getShell } from "./utils";
 
+/**
+ * Validates and sanitizes a working directory path
+ * @param workingDir - The working directory path to validate
+ * @returns A safe working directory path or the default / (root)
+ */
+const validateWorkingDir = (workingDir: string | null): string => {
+	if (!workingDir) {
+		return "/";
+	}
+
+	// Must be an absolute path starting with /
+	if (!workingDir.startsWith("/")) {
+		return "/";
+	}
+
+	// Prevent path traversal attacks - only allow alphanumeric, hyphens, underscores, and forward slashes
+	const safePathRegex = /^\/[\w\-\/]*$/;
+	if (!safePathRegex.test(workingDir)) {
+		return "/";
+	}
+
+	// Prevent directory traversal with ..
+	if (workingDir.includes("..")) {
+		return "/";
+	}
+
+	return workingDir;
+};
+
 export const setupDockerContainerTerminalWebSocketServer = (
 	server: http.Server<typeof http.IncomingMessage, typeof http.ServerResponse>,
 ) => {
@@ -32,6 +61,8 @@ export const setupDockerContainerTerminalWebSocketServer = (
 		const containerId = url.searchParams.get("containerId");
 		const activeWay = url.searchParams.get("activeWay");
 		const serverId = url.searchParams.get("serverId");
+		const workingDirParam = url.searchParams.get("workingDir");
+		const workingDir = validateWorkingDir(workingDirParam);
 		const { user, session } = await validateRequest(req);
 
 		if (!containerId) {
@@ -55,7 +86,7 @@ export const setupDockerContainerTerminalWebSocketServer = (
 				conn
 					.once("ready", () => {
 						conn.exec(
-							`docker exec -it ${containerId} ${activeWay}`,
+							`docker exec -it -w ${workingDir} ${containerId} ${activeWay}`,
 							{ pty: true },
 							(err, stream) => {
 								if (err) throw err;
@@ -107,7 +138,7 @@ export const setupDockerContainerTerminalWebSocketServer = (
 				const shell = getShell();
 				const ptyProcess = spawn(
 					shell,
-					["-c", `docker exec -it ${containerId} ${activeWay}`],
+					["-c", `docker exec -it -w ${workingDir} ${containerId} ${activeWay}`],
 					{},
 				);
 
