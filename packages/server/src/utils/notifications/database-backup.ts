@@ -59,7 +59,7 @@ export const sendDatabaseBackupNotifications = async ({
 			).catch();
 			await sendEmailNotification(
 				email,
-				"Database backup for dokploy",
+				`Database backup for ${applicationName}`,
 				template,
 			);
 		}
@@ -68,11 +68,11 @@ export const sendDatabaseBackupNotifications = async ({
 			const decorate = (decoration: string, text: string) =>
 				`${discord.decoration ? decoration : ""} ${text}`.trim();
 
-			await sendDiscordNotification(discord, {
-				title:
-					type === "success"
-						? decorate(">", "`✅` Database Backup Successful")
-						: decorate(">", "`❌` Database Backup Failed"),
+		await sendDiscordNotification(discord, {
+			title:
+				type === "success"
+					? decorate(">", `\`✅\` Database Backup Successful: ${applicationName}`)
+					: decorate(">", `\`❌\` Database Backup Failed: ${applicationName}`),
 				color: type === "success" ? 0x57f287 : 0xed4245,
 				fields: [
 					{
@@ -131,7 +131,7 @@ export const sendDatabaseBackupNotifications = async ({
 				gotify,
 				decorate(
 					type === "success" ? "✅" : "❌",
-					`Database Backup ${type === "success" ? "Successful" : "Failed"}`,
+					`Database Backup ${type === "success" ? "Successful" : "Failed"}: ${applicationName}`,
 				),
 				`${decorate("🛠️", `Project: ${projectName}`)}` +
 					`${decorate("⚙️", `Application: ${applicationName}`)}` +
@@ -150,7 +150,7 @@ export const sendDatabaseBackupNotifications = async ({
 				? `\n\n<b>Error:</b>\n<pre>${errorMessage}</pre>`
 				: "";
 
-			const messageText = `<b>${statusEmoji} Database Backup ${typeStatus}</b>\n\n<b>Project:</b> ${projectName}\n<b>Application:</b> ${applicationName}\n<b>Type:</b> ${databaseType}\n<b>Date:</b> ${format(date, "PP")}\n<b>Time:</b> ${format(date, "pp")}${isError ? errorMsg : ""}`;
+			const messageText = `<b>${statusEmoji} Database Backup ${typeStatus}: ${applicationName}</b>\n\n<b>Project:</b> ${projectName}\n<b>Application:</b> ${applicationName}\n<b>Type:</b> ${databaseType}\n<b>Date:</b> ${format(date, "PP")}\n<b>Time:</b> ${format(date, "pp")}${isError ? errorMsg : ""}`;
 
 			await sendTelegramNotification(telegram, messageText);
 		}
@@ -164,8 +164,8 @@ export const sendDatabaseBackupNotifications = async ({
 						color: type === "success" ? "#00FF00" : "#FF0000",
 						pretext:
 							type === "success"
-								? ":white_check_mark: *Database Backup Successful*"
-								: ":x: *Database Backup Failed*",
+								? `:white_check_mark: *Database Backup Successful: ${applicationName}*`
+								: `:x: *Database Backup Failed: ${applicationName}*`,
 						fields: [
 							...(type === "error" && errorMessage
 								? [
