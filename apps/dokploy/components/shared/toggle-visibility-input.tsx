@@ -18,6 +18,7 @@ export const ToggleVisibilityInput = ({ ...props }: InputProps) => {
 		<div className="flex w-full items-center space-x-2">
 			<Input ref={inputRef} type={inputType} {...props} />
 			<Button
+				type="button"
 				variant={"secondary"}
 				onClick={() => {
 					copy(inputRef.current?.value || "");
@@ -26,7 +27,7 @@ export const ToggleVisibilityInput = ({ ...props }: InputProps) => {
 			>
 				<Clipboard className="size-4 text-muted-foreground" />
 			</Button>
-			<Button onClick={togglePasswordVisibility} variant={"secondary"}>
+			<Button type="button" onClick={togglePasswordVisibility} variant={"secondary"}>
 				{inputType === "password" ? (
 					<EyeIcon className="size-4 text-muted-foreground" />
 				) : (
