@@ -37,6 +37,7 @@
 
 	"settings.profile.title": "Hesab",
 	"settings.profile.description": "Profilinizin məlumatlarını buradan dəyişin.",
+	"settings.profile.accountName": "Ad",
 	"settings.profile.email": "E-poçt",
 	"settings.profile.password": "Şifrə",
 	"settings.profile.avatar": "Avatar",
