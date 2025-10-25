@@ -10,7 +10,7 @@ import { execAsync, execAsyncRemote } from "../process/execAsync";
 import { getBackupCommand, getS3Credentials, normalizeS3Path } from "./utils";
 
 export const runMySqlBackup = async (mysql: MySql, backup: BackupSchedule) => {
-	const { projectId, name } = mysql;
+	const { projectId, name, databaseName } = mysql;
 	const project = await findProjectById(projectId);
 	const { prefix } = backup;
 	const destination = backup.destination;
@@ -43,6 +43,7 @@ export const runMySqlBackup = async (mysql: MySql, backup: BackupSchedule) => {
 		}
 		await sendDatabaseBackupNotifications({
 			applicationName: name,
+			databaseName: databaseName,
 			projectName: project.name,
 			databaseType: "mysql",
 			type: "success",
@@ -53,6 +54,7 @@ export const runMySqlBackup = async (mysql: MySql, backup: BackupSchedule) => {
 		console.log(error);
 		await sendDatabaseBackupNotifications({
 			applicationName: name,
+			databaseName: databaseName,
 			projectName: project.name,
 			databaseType: "mysql",
 			type: "error",
