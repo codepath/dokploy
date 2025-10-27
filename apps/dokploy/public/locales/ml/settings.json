@@ -37,6 +37,7 @@
 
 	"settings.profile.title": "അക്കൗണ്ട്",
 	"settings.profile.description": "നിങ്ങളുടെ പ്രൊഫൈൽ വിശദാംശങ്ങൾ ഇവിടെ മാറ്റുക.",
+	"settings.profile.name": "പേര്",
 	"settings.profile.email": "ഇമെയിൽ",
 	"settings.profile.password": "പാസ്വേഡ്",
 	"settings.profile.avatar": "അവതാർ",

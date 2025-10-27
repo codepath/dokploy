@@ -28,6 +28,7 @@
 
 	"settings.profile.title": "Hesap",
 	"settings.profile.description": "Profil detaylarınızı buradan değiştirebilirsiniz.",
+	"settings.profile.name": "İsim",
 	"settings.profile.email": "E-posta",
 	"settings.profile.password": "Şifre",
 	"settings.profile.avatar": "Profil Resmi",

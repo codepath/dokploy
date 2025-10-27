@@ -28,6 +28,7 @@
 
 	"settings.profile.title": "アカウント",
 	"settings.profile.description": "ここでプロフィールの詳細を変更できます",
+	"settings.profile.name": "名前",
 	"settings.profile.email": "メールアドレス",
 	"settings.profile.password": "パスワード",
 	"settings.profile.avatar": "アバター",

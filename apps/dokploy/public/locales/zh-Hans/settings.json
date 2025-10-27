@@ -35,6 +35,7 @@
 	"settings.server.webServer.storage.cleanAll": "清理所有内容",
 	"settings.profile.title": "账户",
 	"settings.profile.description": "在此更改您的个人资料详情。",
+	"settings.profile.name": "姓名",
 	"settings.profile.email": "邮箱",
 	"settings.profile.password": "密码",
 	"settings.profile.avatar": "头像",

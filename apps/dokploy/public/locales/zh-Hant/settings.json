@@ -37,6 +37,7 @@
 
 	"settings.profile.title": "帳戶",
 	"settings.profile.description": "更改您的個人資料",
+	"settings.profile.name": "姓名",
 	"settings.profile.email": "信箱",
 	"settings.profile.password": "密碼",
 	"settings.profile.avatar": "頭像",

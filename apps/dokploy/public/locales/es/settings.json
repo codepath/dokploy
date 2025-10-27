@@ -36,6 +36,7 @@
 
 	"settings.profile.title": "Cuenta",
 	"settings.profile.description": "Cambia los detalles de tu perfil aquí.",
+	"settings.profile.name": "Nombre",
 	"settings.profile.email": "Correo electrónico",
 	"settings.profile.password": "Contraseña",
 	"settings.profile.avatar": "Avatar",

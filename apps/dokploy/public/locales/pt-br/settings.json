@@ -28,6 +28,7 @@
 
 	"settings.profile.title": "Conta",
 	"settings.profile.description": "Altere os detalhes do seu perfil aqui.",
+	"settings.profile.name": "Nome",
 	"settings.profile.email": "Email",
 	"settings.profile.password": "Senha",
 	"settings.profile.avatar": "Avatar",

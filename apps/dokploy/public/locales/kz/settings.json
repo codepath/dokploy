@@ -26,6 +26,7 @@
 	"settings.server.webServer.storage.cleanAll": "Барлығын тазалау",
 	"settings.profile.title": "Аккаунт",
 	"settings.profile.description": "Профиль мәліметтерін осы жерден өзгертіңіз.",
+	"settings.profile.name": "Аты",
 	"settings.profile.email": "Эл. пошта",
 	"settings.profile.password": "Құпия сөз",
 	"settings.profile.avatar": "Аватар",

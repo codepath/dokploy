@@ -28,6 +28,7 @@
 
 	"settings.profile.title": "حساب کاربری",
 	"settings.profile.description": "جزئیات پروفایل خود را در اینجا تغییر دهید.",
+	"settings.profile.name": "نام",
 	"settings.profile.email": "ایمیل",
 	"settings.profile.password": "رمز عبور",
 	"settings.profile.avatar": "تصویر پروفایل",

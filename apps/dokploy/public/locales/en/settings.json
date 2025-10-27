@@ -37,6 +37,7 @@
 
 	"settings.profile.title": "Account",
 	"settings.profile.description": "Change the details of your profile here.",
+	"settings.profile.name": "Name",
 	"settings.profile.email": "Email",
 	"settings.profile.password": "Password",
 	"settings.profile.avatar": "Avatar",

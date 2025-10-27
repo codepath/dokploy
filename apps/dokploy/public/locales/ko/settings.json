@@ -28,6 +28,7 @@
 
 	"settings.profile.title": "계정",
 	"settings.profile.description": "여기에서 프로필 세부 정보를 변경하세요.",
+	"settings.profile.name": "이름",
 	"settings.profile.email": "이메일",
 	"settings.profile.password": "비밀번호",
 	"settings.profile.avatar": "아바타",

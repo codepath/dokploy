@@ -37,6 +37,7 @@
 
 	"settings.profile.title": "Akun",
 	"settings.profile.description": "Ubah detail profil Anda di sini.",
+	"settings.profile.name": "Nama",
 	"settings.profile.email": "Email",
 	"settings.profile.password": "Kata Sandi",
 	"settings.profile.avatar": "Avatar",

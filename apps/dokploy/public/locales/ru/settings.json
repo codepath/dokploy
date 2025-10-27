@@ -37,6 +37,7 @@
 
 	"settings.profile.title": "Аккаунт",
 	"settings.profile.description": "Измените данные вашего профиля.",
+	"settings.profile.name": "Имя",
 	"settings.profile.email": "Email",
 	"settings.profile.password": "Пароль",
 	"settings.profile.avatar": "Аватар",

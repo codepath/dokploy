@@ -37,6 +37,7 @@
 
 	"settings.profile.title": "Account",
 	"settings.profile.description": "Veramder details van account.",
+	"settings.profile.name": "Naam",
 	"settings.profile.email": "Email",
 	"settings.profile.password": "Wachtwoord",
 	"settings.profile.avatar": "Profiel Icoon",
