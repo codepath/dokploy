@@ -19,16 +19,22 @@ import {
 	apikey,
 	invitation,
 	member,
+	users_temp,
 } from "@dokploy/server/db/schema";
+import { cleanupOldProfilePictures } from "@dokploy/server/utils/user/cleanup-profile-pictures";
 import { TRPCError } from "@trpc/server";
 import * as bcrypt from "bcrypt";
 import { and, asc, eq, gt } from "drizzle-orm";
+import fs from "node:fs/promises";
+import path from "node:path";
 import { z } from "zod";
+import { uploadProfilePictureSchema } from "@/utils/schema";
 import {
 	adminProcedure,
 	createTRPCRouter,
 	protectedProcedure,
 	publicProcedure,
+	uploadProcedure,
 } from "../trpc";
 
 const apiCreateApiKey = z.object({
@@ -419,5 +425,98 @@ export const userRouter = createTRPCRouter({
 				throw error;
 			}
 			return inviteLink;
+		}),
+
+	uploadProfilePicture: protectedProcedure
+		.use(uploadProcedure)
+		.input(uploadProfilePictureSchema)
+		.mutation(async ({ input, ctx }) => {
+			const profilePicture = input.profilePicture;
+			const userId = ctx.user.id;
+
+			const allowedMimeTypes = [
+				"image/jpeg",
+				"image/jpg",
+				"image/png",
+				"image/gif",
+				"image/webp",
+			];
+			const allowedExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+
+			if (!allowedMimeTypes.includes(profilePicture.type)) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `Invalid file type. Allowed types: ${allowedExtensions.join(", ")}`,
+				});
+			}
+
+			const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+			if (profilePicture.size > maxSize) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "File size exceeds 2MB limit",
+				});
+			}
+
+			const extension = path.extname(profilePicture.name).toLowerCase();
+			if (!allowedExtensions.includes(extension)) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: `Invalid file extension. Allowed: ${allowedExtensions.join(", ")}`,
+				});
+			}
+
+			try {
+				const timestamp = Date.now();
+				const filename = `${userId}-${timestamp}${extension}`;
+
+				const publicPath = path.join(process.cwd(), "public");
+				const userProfileDir = path.join(
+					publicPath,
+					"uploads/profiles",
+					userId,
+				);
+				await fs.mkdir(userProfileDir, { recursive: true });
+
+				const arrayBuffer = await profilePicture.arrayBuffer();
+				const buffer = Buffer.from(arrayBuffer);
+
+				const filePath = path.join(userProfileDir, filename);
+				await fs.writeFile(filePath, buffer);
+
+				const fileExists = await fs
+					.access(filePath)
+					.then(() => true)
+					.catch(() => false);
+
+				if (!fileExists) {
+					throw new TRPCError({
+						code: "INTERNAL_SERVER_ERROR",
+						message: "Failed to save file to disk",
+					});
+				}
+
+				await cleanupOldProfilePictures(userId, filename);
+
+				const imagePath = `/uploads/profiles/${userId}/${filename}`;
+				await db
+					.update(users_temp)
+					.set({
+						image: imagePath,
+					})
+					.where(eq(users_temp.id, userId));
+
+				const updatedUser = await findUserById(userId);
+				return updatedUser;
+			} catch (error) {
+				console.error("Error uploading profile picture:", error);
+				if (error instanceof TRPCError) {
+					throw error;
+				}
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Failed to upload profile picture",
+				});
+			}
 		}),
 });
