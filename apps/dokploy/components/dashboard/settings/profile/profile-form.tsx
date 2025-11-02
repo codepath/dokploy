@@ -33,7 +33,14 @@ import { Enable2FA } from "./enable-2fa";
 
 const profileSchema = z.object({
 	name: z.string().optional(),
-	email: z.string(),
+	email: z
+		.string()
+		.min(1, {
+			message: "Email is required",
+		})
+		.email({
+			message: "Email must be a valid email",
+		}),
 	password: z.string().nullable(),
 	currentPassword: z.string().nullable(),
 	image: z.string().optional(),
