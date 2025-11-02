@@ -7,6 +7,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { Dropzone } from "@/components/ui/dropzone";
 import {
 	Form,
 	FormControl,
@@ -22,7 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { generateSHA256Hash } from "@/lib/utils";
 import { api } from "@/utils/api";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, User } from "lucide-react";
+import { Loader2, Trash, Upload, User } from "lucide-react";
 import { useTranslation } from "next-i18next";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -69,13 +70,43 @@ export const ProfileForm = () => {
 	} = api.user.update.useMutation();
 	const { t } = useTranslation("settings");
 	const [gravatarHash, setGravatarHash] = useState<string | null>(null);
+	const [uploadMode, setUploadMode] = useState<"predefined" | "custom">(
+		"predefined",
+	);
+	const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+	const {
+		mutateAsync: uploadMutation,
+		isLoading: isUploading,
+	} = api.user.uploadProfilePicture.useMutation();
 
 	const availableAvatars = useMemo(() => {
-		if (gravatarHash === null) return randomImages;
-		return randomImages.concat([
-			`https://www.gravatar.com/avatar/${gravatarHash}`,
-		]);
-	}, [gravatarHash]);
+		const avatars =
+			gravatarHash === null
+				? randomImages
+				: randomImages.concat([
+						`https://www.gravatar.com/avatar/${gravatarHash}`,
+					]);
+
+		if (
+			data?.user?.image &&
+			data.user.image.startsWith("/uploads/profiles/")
+		) {
+			return [data.user.image, ...avatars];
+		}
+
+		return avatars;
+	}, [gravatarHash, data?.user?.image]);
+
+	const hasCustomUpload = useMemo(() => {
+		return data?.user?.image?.startsWith("/uploads/profiles/") || false;
+	}, [data?.user?.image]);
+
+	const customImageFilename = useMemo(() => {
+		if (!hasCustomUpload || !data?.user?.image) return null;
+		const parts = data.user.image.split("/");
+		return parts[parts.length - 1]; // Extract filename from path
+	}, [hasCustomUpload, data?.user?.image]);
 
 	const form = useForm<Profile>({
 		defaultValues: {
@@ -111,6 +142,72 @@ export const ProfileForm = () => {
 			}
 		}
 	}, [form, data]);
+
+	useEffect(() => {
+		if (hasCustomUpload) {
+			setUploadMode("custom");
+		}
+	}, [hasCustomUpload]);
+
+	const handleFileUpload = async (file: File) => {
+		setSelectedFile(file);
+
+		const allowedTypes = [
+			"image/jpeg",
+			"image/jpg",
+			"image/png",
+			"image/gif",
+			"image/webp",
+		];
+		const maxSize = 2 * 1024 * 1024; // 2MB
+
+		if (!allowedTypes.includes(file.type)) {
+			toast.error("Please upload a JPG, PNG, GIF, or WEBP image");
+			setSelectedFile(null);
+			return;
+		}
+
+		if (file.size > maxSize) {
+			toast.error("File size must be less than 2MB");
+			setSelectedFile(null);
+			return;
+		}
+
+		const formData = new FormData();
+		formData.append("profilePicture", file);
+
+		await uploadMutation(formData)
+			.then(async (updatedUser) => {
+				toast.success("Profile picture uploaded");
+				form.setValue("image", updatedUser.image || "");
+				setUploadMode("custom");
+				await refetch();
+			})
+			.catch(() => {
+				toast.error("Error uploading profile picture");
+				setSelectedFile(null);
+			});
+	};
+
+	const handleDeleteCustomUpload = async () => {
+		const firstPredefinedAvatar = randomImages[0];
+
+		form.setValue("image", firstPredefinedAvatar);
+
+		await mutateAsync({
+			email: data?.user?.email || "",
+			image: firstPredefinedAvatar,
+		})
+			.then(async () => {
+				await refetch();
+				toast.success("Switched to predefined avatar");
+				setSelectedFile(null);
+				setUploadMode("predefined");
+			})
+			.catch(() => {
+				toast.error("Error updating avatar");
+			});
+	};
 
 	const onSubmit = async (values: Profile) => {
 		await mutateAsync({
@@ -233,12 +330,35 @@ export const ProfileForm = () => {
 														<FormControl>
 															<RadioGroup
 																onValueChange={(e) => {
-																	field.onChange(e);
+																	if (e === "__custom_upload__") {
+																		setUploadMode("custom");
+																	} else {
+																		setUploadMode("predefined");
+																		field.onChange(e);
+																	}
 																}}
 																defaultValue={field.value}
-																value={field.value}
+																value={
+																	uploadMode === "custom"
+																		? "__custom_upload__"
+																		: field.value
+																}
 																className="flex flex-row flex-wrap gap-2 max-xl:justify-center"
 															>
+																<FormItem>
+																	<FormLabel className="[&:has([data-state=checked])>div]:border-primary [&:has([data-state=checked])>div]:border-2 cursor-pointer">
+																		<FormControl>
+																			<RadioGroupItem
+																				value="__custom_upload__"
+																				className="sr-only"
+																			/>
+																		</FormControl>
+																		<div className="h-12 w-12 rounded-full border-2 border-dashed flex items-center justify-center hover:border-primary transition-all bg-background">
+																			<Upload className="h-5 w-5 text-muted-foreground" />
+																		</div>
+																	</FormLabel>
+																</FormItem>
+
 																{availableAvatars.map((image) => (
 																	<FormItem key={image}>
 																		<FormLabel className="[&:has([data-state=checked])>img]:border-primary [&:has([data-state=checked])>img]:border-1 [&:has([data-state=checked])>img]:p-px cursor-pointer">
@@ -260,6 +380,75 @@ export const ProfileForm = () => {
 																))}
 															</RadioGroup>
 														</FormControl>
+														<FormDescription>
+															{uploadMode === "custom"
+																? "Max 2MB • JPG, PNG, GIF, WEBP"
+																: "Choose a predefined avatar or upload your own custom image"}
+														</FormDescription>
+
+														{uploadMode === "custom" && (
+															<div className="mt-4 space-y-4">
+																{(selectedFile || hasCustomUpload) && !isUploading && (
+																	<div className="flex flex-row gap-4 items-center justify-between p-4 border rounded-lg">
+																		<div className="flex flex-row gap-4 items-center">
+																			<img
+																				src={
+																					selectedFile
+																						? URL.createObjectURL(selectedFile)
+																						: data?.user?.image || ""
+																				}
+																				alt="Preview"
+																				className="h-12 w-12 rounded-full object-cover"
+																			/>
+																			<div>
+																				<p className="text-sm font-medium">
+																					{selectedFile
+																						? selectedFile.name
+																						: customImageFilename || "Custom Image"}
+																				</p>
+																				<p className="text-sm text-muted-foreground">
+																					{selectedFile
+																						? `${(selectedFile.size / 1024).toFixed(1)} KB`
+																						: "Uploaded"}
+																				</p>
+																			</div>
+																		</div>
+																		<Button
+																			type="button"
+																			variant="ghost"
+																			size="sm"
+																			onClick={handleDeleteCustomUpload}
+																			disabled={isUploading || isUpdating}
+																		>
+																			<Trash className="w-4 h-4 text-muted-foreground" />
+																		</Button>
+																	</div>
+																)}
+
+																{!selectedFile && !hasCustomUpload && !isUploading && (
+																	<Dropzone
+																		dropMessage="Drop image or click here"
+																		accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+																		onChange={(files) => {
+																			if (
+																				files instanceof FileList &&
+																				files[0]
+																			) {
+																				handleFileUpload(files[0]);
+																			}
+																		}}
+																	/>
+																)}
+
+																{isUploading && (
+																	<p className="text-sm text-muted-foreground flex items-center gap-2">
+																		<Loader2 className="h-4 w-4 animate-spin" />
+																		Uploading...
+																	</p>
+																)}
+															</div>
+														)}
+
 														<FormMessage />
 													</FormItem>
 												)}
