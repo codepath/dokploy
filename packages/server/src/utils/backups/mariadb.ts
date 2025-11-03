@@ -13,7 +13,7 @@ export const runMariadbBackup = async (
 	mariadb: Mariadb,
 	backup: BackupSchedule,
 ) => {
-	const { projectId, name } = mariadb;
+	const { projectId, name, databaseName } = mariadb;
 	const project = await findProjectById(projectId);
 	const { prefix } = backup;
 	const destination = backup.destination;
@@ -44,6 +44,7 @@ export const runMariadbBackup = async (
 
 		await sendDatabaseBackupNotifications({
 			applicationName: name,
+			databaseName: databaseName,
 			projectName: project.name,
 			databaseType: "mariadb",
 			type: "success",
@@ -54,6 +55,7 @@ export const runMariadbBackup = async (
 		console.log(error);
 		await sendDatabaseBackupNotifications({
 			applicationName: name,
+			databaseName: databaseName,
 			projectName: project.name,
 			databaseType: "mariadb",
 			type: "error",

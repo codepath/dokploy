@@ -13,7 +13,7 @@ export const runPostgresBackup = async (
 	postgres: Postgres,
 	backup: BackupSchedule,
 ) => {
-	const { name, projectId } = postgres;
+	const { name, projectId, databaseName } = postgres;
 	const project = await findProjectById(projectId);
 
 	const deployment = await createDeploymentBackup({
@@ -46,6 +46,7 @@ export const runPostgresBackup = async (
 
 		await sendDatabaseBackupNotifications({
 			applicationName: name,
+			databaseName: databaseName,
 			projectName: project.name,
 			databaseType: "postgres",
 			type: "success",
@@ -56,6 +57,7 @@ export const runPostgresBackup = async (
 	} catch (error) {
 		await sendDatabaseBackupNotifications({
 			applicationName: name,
+			databaseName: databaseName,
 			projectName: project.name,
 			databaseType: "postgres",
 			type: "error",
