@@ -11,6 +11,7 @@ import { api } from "@/utils/api";
 import { LockKeyhole, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { HandleSecurity } from "./handle-security";
+import { ToggleVisibilityInput } from "@/components/shared/toggle-visibility-input";
 
 interface Props {
 	applicationId: string;
@@ -69,7 +70,7 @@ export const ShowSecurity = ({ applicationId }: Props) => {
 											<div className="flex flex-col gap-1">
 												<span className="font-medium">Password</span>
 												<span className="text-sm text-muted-foreground">
-													{security.password}
+													<ToggleVisibilityInput value={security.password} />
 												</span>
 											</div>
 										</div>
