@@ -21,7 +21,7 @@ import {
 	member,
 } from "@dokploy/server/db/schema";
 import { TRPCError } from "@trpc/server";
-import * as bcrypt from "bcrypt";
+import * as bcrypt from "bcryptjs";
 import { and, asc, eq, gt } from "drizzle-orm";
 import { z } from "zod";
 import {

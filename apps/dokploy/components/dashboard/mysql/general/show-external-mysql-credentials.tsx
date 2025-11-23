@@ -112,7 +112,7 @@ export const ShowExternalMysqlCredentials = ({ mysqlId }: Props) => {
 							<AlertBlock type="warning">
 								You need to set an IP address in your{" "}
 								<Link
-									href="/dashboard/settings/server"
+									href={data?.serverId ? "/dashboard/settings/servers" : "/dashboard/settings/server"}
 									className="text-primary"
 								>
 									{data?.serverId
