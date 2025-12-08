@@ -23,12 +23,16 @@ import {
 import { TRPCError } from "@trpc/server";
 import * as bcrypt from "bcrypt";
 import { and, asc, eq, gt } from "drizzle-orm";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { z } from "zod";
+import { uploadAvatarSchema } from "@/utils/schema";
 import {
 	adminProcedure,
 	createTRPCRouter,
 	protectedProcedure,
 	publicProcedure,
+	uploadProcedure,
 } from "../trpc";
 
 const apiCreateApiKey = z.object({
@@ -175,6 +179,70 @@ export const userRouter = createTRPCRouter({
 					.where(eq(account.userId, ctx.user.id));
 			}
 			return await updateUser(ctx.user.id, input);
+		}),
+	uploadAvatar: protectedProcedure
+		.use(uploadProcedure)
+		.input(uploadAvatarSchema)
+		.mutation(async ({ input, ctx }) => {
+			const file = input.file;
+
+			// Validate file type
+			const allowedTypes = [
+				"image/png",
+				"image/jpeg",
+				"image/jpg",
+				"image/gif",
+				"image/webp",
+			];
+			if (!allowedTypes.includes(file.type)) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message:
+						"Invalid file type. Only PNG, JPEG, GIF, and WebP images are allowed.",
+				});
+			}
+
+			// Validate file size (2MB max)
+			const maxSize = 2 * 1024 * 1024; // 2MB
+			if (file.size > maxSize) {
+				throw new TRPCError({
+					code: "BAD_REQUEST",
+					message: "File size exceeds 2MB limit.",
+				});
+			}
+
+			// Generate unique filename
+			const timestamp = Date.now();
+			const extension = file.name.split(".").pop() || "png";
+			const filename = `user-${ctx.user.id}-${timestamp}.${extension}`;
+
+			// Get the public avatars directory path
+			const publicDir = path.join(process.cwd(), "public", "avatars");
+
+			// Ensure the avatars directory exists
+			if (!fs.existsSync(publicDir)) {
+				fs.mkdirSync(publicDir, { recursive: true });
+			}
+
+			// Remove old custom avatar if exists
+			const files = fs.readdirSync(publicDir);
+			for (const existingFile of files) {
+				if (existingFile.startsWith(`user-${ctx.user.id}-`)) {
+					fs.unlinkSync(path.join(publicDir, existingFile));
+				}
+			}
+
+			// Save the new file
+			const filePath = path.join(publicDir, filename);
+			const arrayBuffer = await file.arrayBuffer();
+			const buffer = Buffer.from(arrayBuffer);
+			fs.writeFileSync(filePath, buffer);
+
+			// Update user's image in database
+			const imagePath = `/avatars/${filename}`;
+			await updateUser(ctx.user.id, { image: imagePath });
+
+			return { imagePath };
 		}),
 	getUserByToken: publicProcedure
 		.input(apiFindOneToken)

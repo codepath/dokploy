@@ -19,12 +19,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { generateSHA256Hash } from "@/lib/utils";
+import { cn, generateSHA256Hash } from "@/lib/utils";
 import { api } from "@/utils/api";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, User } from "lucide-react";
+import { Loader2, Upload, User } from "lucide-react";
 import { useTranslation } from "next-i18next";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -67,8 +67,17 @@ export const ProfileForm = () => {
 		isError,
 		error,
 	} = api.user.update.useMutation();
+
+	const {
+		mutateAsync: uploadAvatarAsync,
+		isLoading: isUploading,
+	} = api.user.uploadAvatar.useMutation();
+
 	const { t } = useTranslation("settings");
 	const [gravatarHash, setGravatarHash] = useState<string | null>(null);
+	const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+	const [customAvatarPath, setCustomAvatarPath] = useState<string | null>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const availableAvatars = useMemo(() => {
 		if (gravatarHash === null) return randomImages;
@@ -76,6 +85,75 @@ export const ProfileForm = () => {
 			`https://www.gravatar.com/avatar/${gravatarHash}`,
 		]);
 	}, [gravatarHash]);
+
+	// Check if image path is a custom upload
+	const isCustomAvatar = useCallback((imagePath: string | undefined | null) => {
+		return imagePath?.startsWith("/avatars/user-") ?? false;
+	}, []);
+
+	// Handle file selection
+	const handleFileSelect = async (
+		event: React.ChangeEvent<HTMLInputElement>,
+		fieldOnChange: (value: string) => void,
+	) => {
+		const file = event.target.files?.[0];
+		if (!file) return;
+
+		// Validate file type
+		const allowedTypes = [
+			"image/png",
+			"image/jpeg",
+			"image/jpg",
+			"image/gif",
+			"image/webp",
+		];
+		if (!allowedTypes.includes(file.type)) {
+			toast.error(
+				"Invalid file type. Only PNG, JPEG, GIF, and WebP images are allowed.",
+			);
+			return;
+		}
+
+		// Validate file size (2MB)
+		const maxSize = 2 * 1024 * 1024;
+		if (file.size > maxSize) {
+			toast.error("File size exceeds 2MB limit.");
+			return;
+		}
+
+		// Show preview
+		const previewUrl = URL.createObjectURL(file);
+		setUploadPreview(previewUrl);
+
+		// Upload the file
+		const formData = new FormData();
+		formData.append("file", file);
+
+		try {
+			const result = await uploadAvatarAsync(formData);
+			setCustomAvatarPath(result.imagePath);
+			fieldOnChange(result.imagePath);
+			toast.success("Avatar uploaded successfully");
+			await refetch();
+		} catch (uploadError) {
+			toast.error("Error uploading avatar");
+			setUploadPreview(null);
+		}
+
+		// Clean up the input
+		if (fileInputRef.current) {
+			fileInputRef.current.value = "";
+		}
+	};
+
+	// Clean up preview URL on unmount
+	useEffect(() => {
+		return () => {
+			if (uploadPreview) {
+				URL.revokeObjectURL(uploadPreview);
+			}
+		};
+	}, [uploadPreview]);
 
 	const form = useForm<Profile>({
 		defaultValues: {
@@ -109,8 +187,13 @@ export const ProfileForm = () => {
 					setGravatarHash(hash);
 				});
 			}
+
+			// Set custom avatar path if user has one
+			if (isCustomAvatar(data.user.image)) {
+				setCustomAvatarPath(data.user.image);
+			}
 		}
-	}, [form, data]);
+	}, [form, data, isCustomAvatar]);
 
 	const onSubmit = async (values: Profile) => {
 		await mutateAsync({
@@ -234,11 +317,66 @@ export const ProfileForm = () => {
 															<RadioGroup
 																onValueChange={(e) => {
 																	field.onChange(e);
+																	// Clear upload preview when selecting a predefined avatar
+																	if (!isCustomAvatar(e)) {
+																		setUploadPreview(null);
+																	}
 																}}
 																defaultValue={field.value}
 																value={field.value}
 																className="flex flex-row flex-wrap gap-2 max-xl:justify-center"
 															>
+																{/* Upload custom avatar option */}
+																<FormItem>
+																	<FormLabel
+																		className={cn(
+																			"cursor-pointer",
+																			isCustomAvatar(field.value) &&
+																				"[&>div]:border-primary [&>div]:border-1 [&>div]:p-px",
+																		)}
+																	>
+																		<FormControl>
+																			<RadioGroupItem
+																				value={customAvatarPath || "custom-upload"}
+																				className="sr-only"
+																				checked={isCustomAvatar(field.value)}
+																			/>
+																		</FormControl>
+																		<div
+																			className={cn(
+																				"h-12 w-12 rounded-full border flex items-center justify-center hover:border-primary transition-transform overflow-hidden",
+																				isUploading && "opacity-50",
+																			)}
+																			onClick={(e) => {
+																				e.preventDefault();
+																				fileInputRef.current?.click();
+																			}}
+																		>
+																			{isUploading ? (
+																				<Loader2 className="size-5 animate-spin text-muted-foreground" />
+																			) : uploadPreview || customAvatarPath ? (
+																				<img
+																					src={uploadPreview || customAvatarPath || ""}
+																					alt="Custom avatar"
+																					className="h-full w-full object-cover"
+																				/>
+																			) : (
+																				<Upload className="size-5 text-muted-foreground" />
+																			)}
+																		</div>
+																		<input
+																			ref={fileInputRef}
+																			type="file"
+																			accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+																			className="hidden"
+																			onChange={(e) =>
+																				handleFileSelect(e, field.onChange)
+																			}
+																		/>
+																	</FormLabel>
+																</FormItem>
+
+																{/* Predefined avatars */}
 																{availableAvatars.map((image) => (
 																	<FormItem key={image}>
 																		<FormLabel className="[&:has([data-state=checked])>img]:border-primary [&:has([data-state=checked])>img]:border-1 [&:has([data-state=checked])>img]:p-px cursor-pointer">
@@ -260,6 +398,10 @@ export const ProfileForm = () => {
 																))}
 															</RadioGroup>
 														</FormControl>
+														<FormDescription>
+															Click the upload icon to add a custom avatar (max
+															2MB, PNG/JPEG/GIF/WebP)
+														</FormDescription>
 														<FormMessage />
 													</FormItem>
 												)}

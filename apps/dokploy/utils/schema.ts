@@ -17,3 +17,9 @@ export const uploadFileSchema = zfd.formData({
 });
 
 export type UploadFile = z.infer<typeof uploadFileSchema>;
+
+export const uploadAvatarSchema = zfd.formData({
+	file: zfd.file(),
+});
+
+export type UploadAvatar = z.infer<typeof uploadAvatarSchema>;

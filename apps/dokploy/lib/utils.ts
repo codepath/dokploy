@@ -6,6 +6,10 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export async function generateSHA256Hash(text: string) {
+	// crypto.subtle is not available during SSR
+	if (typeof window === "undefined" || !crypto?.subtle) {
+		return "";
+	}
 	const encoder = new TextEncoder();
 	const data = encoder.encode(text);
 	const hashBuffer = await crypto.subtle.digest("SHA-256", data);
