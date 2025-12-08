@@ -326,25 +326,12 @@ export const ProfileForm = () => {
 																value={field.value}
 																className="flex flex-row flex-wrap gap-2 max-xl:justify-center"
 															>
-																{/* Upload custom avatar option */}
+																{/* Upload button - always shows upload icon */}
 																<FormItem>
-																	<FormLabel
-																		className={cn(
-																			"cursor-pointer",
-																			isCustomAvatar(field.value) &&
-																				"[&>div]:border-primary [&>div]:border-1 [&>div]:p-px",
-																		)}
-																	>
-																		<FormControl>
-																			<RadioGroupItem
-																				value={customAvatarPath || "custom-upload"}
-																				className="sr-only"
-																				checked={isCustomAvatar(field.value)}
-																			/>
-																		</FormControl>
+																	<FormLabel className="cursor-pointer">
 																		<div
 																			className={cn(
-																				"h-12 w-12 rounded-full border flex items-center justify-center hover:border-primary transition-transform overflow-hidden",
+																				"h-12 w-12 rounded-full border flex items-center justify-center hover:border-primary transition-transform",
 																				isUploading && "opacity-50",
 																			)}
 																			onClick={(e) => {
@@ -354,12 +341,6 @@ export const ProfileForm = () => {
 																		>
 																			{isUploading ? (
 																				<Loader2 className="size-5 animate-spin text-muted-foreground" />
-																			) : uploadPreview || customAvatarPath ? (
-																				<img
-																					src={uploadPreview || customAvatarPath || ""}
-																					alt="Custom avatar"
-																					className="h-full w-full object-cover"
-																				/>
 																			) : (
 																				<Upload className="size-5 text-muted-foreground" />
 																			)}
@@ -375,6 +356,25 @@ export const ProfileForm = () => {
 																		/>
 																	</FormLabel>
 																</FormItem>
+
+																{/* Custom avatar - shows when user has uploaded one */}
+																{(uploadPreview || customAvatarPath) && (
+																	<FormItem>
+																		<FormLabel className="[&:has([data-state=checked])>img]:border-primary [&:has([data-state=checked])>img]:border-1 [&:has([data-state=checked])>img]:p-px cursor-pointer">
+																			<FormControl>
+																				<RadioGroupItem
+																					value={customAvatarPath || "custom-upload"}
+																					className="sr-only"
+																				/>
+																			</FormControl>
+																			<img
+																				src={uploadPreview || customAvatarPath || ""}
+																				alt="Custom avatar"
+																				className="h-12 w-12 rounded-full border hover:p-px hover:border-primary transition-transform object-cover"
+																			/>
+																		</FormLabel>
+																	</FormItem>
+																)}
 
 																{/* Predefined avatars */}
 																{availableAvatars.map((image) => (
