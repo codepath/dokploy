@@ -31,6 +31,15 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectLabel,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { api } from "@/utils/api";
 import {
 	AlertTriangle,
@@ -43,10 +52,47 @@ import {
 	TrashIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { HandleProject } from "./handle-project";
 import { ProjectEnvironment } from "./project-environment";
+
+// created some type definitions 
+type SortOption =
+	| "name-asc"
+	| "name-desc"
+	| "createdAt-desc"
+	| "createdAt-asc"
+	| "services-desc"
+	| "services-asc";
+
+// LocalStorage key for persisting sort preference
+const SORT_STORAGE_KEY = "dokploy-projects-sort";
+
+// Default sort option (creation date, newest first)
+const DEFAULT_SORT: SortOption = "createdAt-desc";
+
+// validates if a string is a valid sort option
+const isValidSortOption = (value: string): value is SortOption => {
+	return [
+		"name-asc",
+		"name-desc",
+		"createdAt-desc",
+		"createdAt-asc",
+		"services-desc",
+		"services-asc",
+	].includes(value);
+};
+
+// sort option labels
+const SORT_LABELS: Record<SortOption, string> = {
+	"name-asc": "Name (A–Z)",
+	"name-desc": "Name (Z–A)",
+	"createdAt-desc": "Created (Newest)",
+	"createdAt-asc": "Created (Oldest)",
+	"services-desc": "Services (Most)",
+	"services-asc": "Services (Least)",
+};
 
 export const ShowProjects = () => {
 	const utils = api.useUtils();
@@ -54,15 +100,67 @@ export const ShowProjects = () => {
 	const { data: auth } = api.user.get.useQuery();
 	const { mutateAsync } = api.project.remove.useMutation();
 	const [searchQuery, setSearchQuery] = useState("");
+	const [sortOption, setSortOption] = useState<SortOption>(DEFAULT_SORT);
+
+	// load sort preference from localStorage on mount
+	useEffect(() => {
+		const savedSort = localStorage.getItem(SORT_STORAGE_KEY);
+		if (savedSort && isValidSortOption(savedSort)) {
+			setSortOption(savedSort);
+		}
+	}, []);
+
+	// save sort preference to localStorage when it changes
+	useEffect(() => {
+		localStorage.setItem(SORT_STORAGE_KEY, sortOption);
+	}, [sortOption]);
 
 	const filteredProjects = useMemo(() => {
 		if (!data) return [];
-		return data.filter(
+
+		// making sure to filter by the search query
+		let filtered = data.filter(
 			(project) =>
 				project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 				project.description?.toLowerCase().includes(searchQuery.toLowerCase()),
 		);
-	}, [data, searchQuery]);
+
+		// can then filter sorted results 
+		filtered = [...filtered].sort((a, b) => {
+			// quick helper to count total services 
+			const countServices = (project: typeof a) =>
+				(project.mariadb?.length || 0) +
+				(project.mongo?.length || 0) +
+				(project.mysql?.length || 0) +
+				(project.postgres?.length || 0) +
+				(project.redis?.length || 0) +
+				(project.applications?.length || 0) +
+				(project.compose?.length || 0);
+
+			switch (sortOption) {
+				case "name-asc":
+					return a.name.localeCompare(b.name);
+				case "name-desc":
+					return b.name.localeCompare(a.name);
+				case "createdAt-desc":
+					return (
+						new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+					);
+				case "createdAt-asc":
+					return (
+						new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+					);
+				case "services-desc":
+					return countServices(b) - countServices(a);
+				case "services-asc":
+					return countServices(a) - countServices(b);
+				default:
+					return 0;
+			}
+		});
+
+		return filtered;
+	}, [data, searchQuery, sortOption]);
 
 	return (
 		<>
@@ -98,14 +196,37 @@ export const ShowProjects = () => {
 								</div>
 							) : (
 								<>
-									<div className="w-full relative">
-										<Input
-											placeholder="Filter projects..."
-											value={searchQuery}
-											onChange={(e) => setSearchQuery(e.target.value)}
-											className="pr-10"
-										/>
-										<Search className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+									{/* search and sort controls here! */}
+									<div className="w-full flex flex-col sm:flex-row gap-3">
+										<div className="relative flex-1">
+											<Input
+												placeholder="filter projects..."
+												value={searchQuery}
+												onChange={(e) => setSearchQuery(e.target.value)}
+												className="pr-10"
+											/>
+											<Search className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+										</div>
+										<Select
+											value={sortOption}
+											onValueChange={(value: SortOption) => setSortOption(value)}
+										>
+											<SelectTrigger className="w-full sm:w-48">
+												<SelectValue placeholder="Sort by" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectGroup>
+													<SelectLabel>Sort by</SelectLabel>
+													{(Object.keys(SORT_LABELS) as SortOption[]).map(
+														(option) => (
+															<SelectItem key={option} value={option}>
+																{SORT_LABELS[option]}
+															</SelectItem>
+														),
+													)}
+												</SelectGroup>
+											</SelectContent>
+										</Select>
 									</div>
 									{filteredProjects?.length === 0 && (
 										<div className="mt-6 flex h-[50vh] w-full flex-col items-center justify-center space-y-4">
