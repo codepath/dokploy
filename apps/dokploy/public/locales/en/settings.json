@@ -35,6 +35,7 @@
 	"settings.server.webServer.storage.cleanMonitoring": "Clean Monitoring",
 	"settings.server.webServer.storage.cleanAll": "Clean all",
 
+	"settings.profile.name": "Name",
 	"settings.profile.title": "Account",
 	"settings.profile.description": "Change the details of your profile here.",
 	"settings.profile.email": "Email",
