@@ -22,9 +22,9 @@ import { Switch } from "@/components/ui/switch";
 import { generateSHA256Hash } from "@/lib/utils";
 import { api } from "@/utils/api";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, User } from "lucide-react";
+import { Loader2, Upload, User } from "lucide-react";
 import { useTranslation } from "next-i18next";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -57,6 +57,15 @@ const randomImages = [
 	"/avatars/avatar-12.png",
 ];
 
+// have a max file size of 2 MB?
+const MAX_FILE_SIZE = 2 * 1024 * 1024;
+
+// accepted image types
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
+
+// helper to check if a string is a base64 data URL
+const isBase64Image = (str: string) => str.startsWith("data:image/");
+
 export const ProfileForm = () => {
 	const _utils = api.useUtils();
 	const { data, refetch, isLoading } = api.user.get.useQuery();
@@ -70,6 +79,8 @@ export const ProfileForm = () => {
 	} = api.user.update.useMutation();
 	const { t } = useTranslation("settings");
 	const [gravatarHash, setGravatarHash] = useState<string | null>(null);
+	const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const availableAvatars = useMemo(() => {
 		if (gravatarHash === null) return randomImages;
@@ -106,6 +117,11 @@ export const ProfileForm = () => {
 			);
 			form.setValue("allowImpersonation", data?.user?.allowImpersonation);
 
+			// restoring!
+			if (data?.user?.image && isBase64Image(data.user.image)) {
+				setUploadedImage(data.user.image);
+			}
+
 			if (data.user.email) {
 				generateSHA256Hash(data.user.email).then((hash) => {
 					setGravatarHash(hash);
@@ -113,6 +129,41 @@ export const ProfileForm = () => {
 			}
 		}
 	}, [form, data]);
+
+	const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+		const file = event.target.files?.[0];
+		if (!file) return;
+
+		// validations
+		if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+			toast.error("upload a valid image file (JPEG, PNG, GIF, or WebP)");
+			return;
+		}
+
+		if (file.size > MAX_FILE_SIZE) {
+			toast.error("your image size must be less than 2MB");
+			return;
+		}
+
+		// converting to base 64
+		const reader = new FileReader();
+		reader.onloadend = () => {
+			const base64String = reader.result as string;
+			setUploadedImage(base64String);
+			form.setValue("image", base64String);
+		};
+		reader.onerror = () => {
+			toast.error("Failed to read the image file");
+		};
+		reader.readAsDataURL(file);
+
+		// reset the input 
+		event.target.value = "";
+	};
+
+	const triggerFileUpload = () => {
+		fileInputRef.current?.click();
+	};
 
 	const onSubmit = async (values: Profile) => {
 		await mutateAsync({
@@ -137,6 +188,10 @@ export const ProfileForm = () => {
 				toast.error("Error updating the profile");
 			});
 	};
+
+	// if the current image value is the uploaded image check
+	const currentImageValue = form.watch("image");
+	const isUploadedImageSelected = uploadedImage && currentImageValue === uploadedImage;
 
 	return (
 		<div className="w-full">
@@ -258,6 +313,61 @@ export const ProfileForm = () => {
 																value={field.value}
 																className="flex flex-row flex-wrap gap-2 max-xl:justify-center"
 															>
+																{/* Upload Custom Image Option */}
+																<FormItem>
+																	<FormLabel
+																		className={`cursor-pointer ${
+																			isUploadedImageSelected
+																				? "ring-2 ring-primary ring-offset-2 rounded-full"
+																				: ""
+																		}`}
+																	>
+																		<input
+																			ref={fileInputRef}
+																			type="file"
+																			accept={ACCEPTED_IMAGE_TYPES.join(",")}
+																			onChange={handleFileUpload}
+																			className="sr-only"
+																		/>
+																		{uploadedImage ? (
+																			<div
+																				onClick={(e) => {
+																					// If clicking on uploaded image and it's not selected, select it
+																					if (!isUploadedImageSelected) {
+																						e.preventDefault();
+																						field.onChange(uploadedImage);
+																					} else {
+																						// If already selected, trigger new upload
+																						e.preventDefault();
+																						triggerFileUpload();
+																					}
+																				}}
+																				className="relative group"
+																			>
+																				<img
+																					src={uploadedImage}
+																					alt="Uploaded avatar"
+																					className="h-12 w-12 rounded-full border object-cover hover:border-primary transition-transform"
+																				/>
+																				<div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+																					<Upload className="size-4 text-white" />
+																				</div>
+																			</div>
+																		) : (
+																			<div
+																				onClick={(e) => {
+																					e.preventDefault();
+																					triggerFileUpload();
+																				}}
+																				className="h-12 w-12 rounded-full border border-dashed border-muted-foreground/50 flex items-center justify-center hover:border-primary hover:bg-muted/50 transition-colors"
+																			>
+																				<Upload className="size-4 text-muted-foreground" />
+																			</div>
+																		)}
+																	</FormLabel>
+																</FormItem>
+
+																{/* Predefined Avatars */}
 																{availableAvatars.map((image) => (
 																	<FormItem key={image}>
 																		<FormLabel className="[&:has([data-state=checked])>img]:border-primary [&:has([data-state=checked])>img]:border-1 [&:has([data-state=checked])>img]:p-px cursor-pointer">
@@ -279,6 +389,9 @@ export const ProfileForm = () => {
 																))}
 															</RadioGroup>
 														</FormControl>
+														<FormDescription>
+															Click the upload icon to use your own image (max 2MB)
+														</FormDescription>
 														<FormMessage />
 													</FormItem>
 												)}
