@@ -63,7 +63,7 @@ const MAX_FILE_SIZE = 2 * 1024 * 1024;
 // accepted image types
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"];
 
-// helper to check if a string is a base64 data URL
+// helper to check if a string is a base64 data URLs
 const isBase64Image = (str: string) => str.startsWith("data:image/");
 
 export const ProfileForm = () => {
